@@ -1,0 +1,112 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Bash scripts for running Claude Code autonomously inside an LXD system container on an Ubuntu homelab server. The LXD container IS the sandbox — Claude Code runs with `--dangerously-skip-permissions` inside it, and btrfs snapshots provide rollback safety. Docker runs natively inside the container (via `security.nesting=true`), avoiding Docker-in-Docker complications. The container comes pre-installed with uv and Spec Kit (`specify-cli`) for spec-driven development workflows.
+
+## Host Environment
+
+- **Server**: Ubuntu (hostname: gram-server, user: john)
+- **LXD bridge**: `lxdbr0` at 10.200.12.1/24
+- **Storage**: btrfs pool on dedicated LVM volume at `/var/lib/lxd-storage`
+- Docker also runs on the host with many stacks — Docker's iptables rules can block LXD bridge traffic (see Known Issues below)
+
+## Architecture
+
+Three scripts, each with a distinct execution context:
+
+1. **`setup-host.sh`** — Runs on the host. One-time setup: creates an Ubuntu 24.04 LXD container, mounts project directory read-only, pushes and executes the provisioning script, takes a baseline snapshot. Uses `set -euo pipefail`; if it fails partway through, delete the container and start fresh rather than resuming. Presents browser OAuth login as the primary auth method; API key injection via `ANTHROPIC_API_KEY` env var is the alternative.
+
+2. **`provision-container.sh`** — Runs inside the container (pushed by setup-host.sh). Installs Docker CE, Node.js 22 (NodeSource), Claude Code (npm global), uv, Spec Kit (`specify-cli`), and dev tools. Configures the `ubuntu` user with aliases (`cc`, `cc-resume`, `cc-prompt`), helper functions (`sync-project`, `deploy`), and `~/.local/bin` on PATH in bash. Fish shell is opt-in via `--fish` flag (installs fish, writes fish config, sets fish as default shell).
+
+3. **`sandbox.sh`** — Runs on the host. Day-to-day management wrapper around `lxc` commands. Container name comes from `CLAUDE_SANDBOX` env var (default: `claude-sandbox`).
+
+## File Strategy Inside the Container
+
+- `/home/ubuntu/project-src` — Host project mounted read-only
+- `/home/ubuntu/project` — Writable working copy (Claude works here)
+- `/mnt/deploy` — Optional read-write mount for deploying output to host
+
+## Key Commands
+
+```bash
+# Setup help
+./setup-host.sh --help
+
+# Initial setup (run on host)
+./setup-host.sh -n claude-sandbox -p /home/john/dev/jellyfish/
+./setup-host.sh -n claude-sandbox -p /home/john/dev/jellyfish/ --fish
+
+# Authenticate (one-time, after setup)
+./sandbox.sh login
+
+# Re-provision an existing container without recreating it
+lxc exec claude-sandbox -- rm -f /tmp/provision-container.sh
+lxc file push provision-container.sh claude-sandbox/tmp/provision-container.sh
+lxc exec claude-sandbox -- chmod +x /tmp/provision-container.sh
+lxc exec claude-sandbox -- /tmp/provision-container.sh
+
+# Day-to-day (run on host)
+./sandbox.sh shell                # interactive shell as ubuntu
+./sandbox.sh claude               # interactive Claude Code (autonomous)
+./sandbox.sh claude-run "prompt"  # one-shot Claude Code
+./sandbox.sh claude-resume        # resume last session
+./sandbox.sh exec npm test        # run a command in the project dir
+./sandbox.sh snapshot <name>      # btrfs snapshot
+./sandbox.sh restore <name>       # instant rollback (auto-restarts)
+./sandbox.sh sync                 # rsync project-src -> project
+./sandbox.sh docker <args>        # run docker commands inside sandbox
+./sandbox.sh health-check         # verify container, network, Docker, Claude
+
+# Multiple containers
+CLAUDE_SANDBOX=other-name ./sandbox.sh shell
+```
+
+## Known Issues
+
+### Docker iptables vs LXD bridge (RESOLVED)
+
+Docker's iptables rules on the host block LXD bridge traffic at two levels, causing containers to get IPv6 but no IPv4:
+
+1. **INPUT chain** — UFW drops DHCP requests (udp/67) and DNS (udp+tcp/53) from lxdbr0. The default `before.rules` only allows DHCP *replies* (sport 67, dport 68), not *requests* from containers to dnsmasq on the bridge.
+
+2. **FORWARD chain** — Docker's `DOCKER-USER` chain (defined in `/etc/ufw/after.rules`) allows specific subnets then DROPs all else. lxdbr0's 10.200.12.0/24 was not in the allow list.
+
+**Fix applied** (persistent across reboots via UFW):
+
+In `/etc/ufw/before.rules`, before the final `COMMIT`:
+```
+# LXD bridge: allow DHCP, DNS, and forwarding for lxdbr0
+-A ufw-before-input -i lxdbr0 -p udp --dport 67 -j ACCEPT
+-A ufw-before-input -i lxdbr0 -p udp --dport 53 -j ACCEPT
+-A ufw-before-input -i lxdbr0 -p tcp --dport 53 -j ACCEPT
+-A ufw-before-forward -i lxdbr0 -j ACCEPT
+-A ufw-before-forward -o lxdbr0 -j ACCEPT
+```
+
+In `/etc/ufw/after.rules`, in the `DOCKER-USER` section before the DROP:
+```
+-A DOCKER-USER -s 10.200.12.0/24 -j RETURN
+```
+
+Reload with `sudo ufw reload`. No need for `netfilter-persistent` (it's in `rc` removed state on this host).
+
+### Re-provisioning: `lxc file push` won't overwrite
+
+When re-pushing `provision-container.sh` to an existing container, `lxc file push` silently fails to overwrite the file (reports "Forbidden" after showing 100% progress). Delete the target file first:
+```bash
+lxc exec claude-sandbox -- rm -f /tmp/provision-container.sh
+lxc file push provision-container.sh claude-sandbox/tmp/provision-container.sh
+```
+
+## Editing Notes
+
+- All three scripts use `#!/bin/bash`. `setup-host.sh` and `provision-container.sh` use `set -euo pipefail`.
+- `provision-container.sh` always writes bash config. Fish config is only written when `--fish` is passed — if changing aliases or helper functions, update both shell configs within that script.
+- `sandbox.sh` uses a case-based dispatch pattern at the bottom for subcommand routing. The `require_container` and `require_running` helpers validate container state before each command.
+- The `sync-project` function (and `sandbox.sh sync`) excludes `node_modules`, `.git`, `dist`, and `build` from rsync — keep these lists in sync across bash config, fish config, and `sandbox.sh`.
+- `sandbox.sh` uses `-t` flag on `lxc exec` for interactive commands (`shell`, `root`, `login`, `claude`, `claude-resume`) to allocate a proper TTY.
+- `sandbox.sh` uses `printf %q` for safe shell escaping in `cmd_claude_run` and `cmd_docker` to handle arguments with spaces and special characters.
+- `provision-container.sh` uses `gpg --dearmor --yes` so the Docker GPG key step is idempotent on re-provisioning.

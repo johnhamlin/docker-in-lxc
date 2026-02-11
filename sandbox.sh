@@ -1,0 +1,375 @@
+#!/bin/bash
+# =============================================================================
+# Claude Code LXD Sandbox - Management Helper
+# Common operations for your sandbox
+# =============================================================================
+
+CONTAINER_NAME="${CLAUDE_SANDBOX:-claude-sandbox}"
+
+usage() {
+  cat << EOF
+Usage: ./sandbox.sh <command> [options]
+
+Commands:
+  shell                  Open a shell in the container as ubuntu user
+  root                   Open a root shell in the container
+  start                  Start the container
+  stop                   Stop the container
+  restart                Restart the container
+  status                 Show container status and resource usage
+
+  login                  Authenticate Claude Code via browser OAuth (one-time)
+  claude                 Run Claude Code interactively (autonomous mode)
+  claude-run "prompt"    Run Claude Code with a one-shot prompt
+  claude-resume          Resume the most recent Claude Code session
+
+  sync                   Sync project from read-only mount to working dir
+  exec <command>         Run a command in the container's project dir
+  pull <path> [dest]     Pull file/dir from container to host
+  push <path> [dest]     Push file/dir from host to container
+
+  snapshot [name]        Create a named snapshot (default: timestamp)
+  restore <name>         Restore to a snapshot (auto-restarts container)
+  snapshots              List all snapshots
+
+  logs                   Show Docker container logs inside sandbox
+  docker <args>          Run docker commands inside the sandbox
+
+  health-check           Verify container, network, Docker, and Claude Code
+  destroy                Delete the container entirely (asks for confirmation)
+
+Environment:
+  CLAUDE_SANDBOX         Container name (default: claude-sandbox)
+
+Examples:
+  ./sandbox.sh login                                  # first-time auth
+  ./sandbox.sh shell
+  ./sandbox.sh claude
+  ./sandbox.sh claude-run "fix the failing tests in src/api/"
+  ./sandbox.sh claude-resume                          # pick up where you left off
+  ./sandbox.sh exec npm test                          # run a command in project dir
+  ./sandbox.sh snapshot before-big-refactor
+  ./sandbox.sh restore before-big-refactor
+  ./sandbox.sh pull /home/ubuntu/project/dist/ ./dist/
+  ./sandbox.sh docker compose logs -f
+  ./sandbox.sh health-check
+EOF
+}
+
+# --- Helpers -----------------------------------------------------------------
+
+require_container() {
+  if ! lxc info "$CONTAINER_NAME" &>/dev/null; then
+    echo "Error: container '$CONTAINER_NAME' not found"
+    echo "  Create it with: ./setup-host.sh -n $CONTAINER_NAME -p /path/to/project"
+    exit 1
+  fi
+}
+
+require_running() {
+  require_container
+  local state
+  state=$(lxc info "$CONTAINER_NAME" | grep -oP 'Status: \K\w+')
+  if [[ "$state" != "RUNNING" ]]; then
+    echo "Error: container '$CONTAINER_NAME' is $state (not running)"
+    echo "  Start it with: ./sandbox.sh start"
+    exit 1
+  fi
+}
+
+# --- Commands ----------------------------------------------------------------
+
+cmd_shell() {
+  require_running
+  lxc exec "$CONTAINER_NAME" -t -- su - ubuntu
+}
+
+cmd_root() {
+  require_running
+  lxc exec "$CONTAINER_NAME" -t -- bash
+}
+
+cmd_start() {
+  require_container
+  if lxc start "$CONTAINER_NAME"; then
+    echo "Container started"
+  else
+    echo "Failed to start container"
+    exit 1
+  fi
+}
+
+cmd_stop() {
+  require_running
+  if lxc stop "$CONTAINER_NAME"; then
+    echo "Container stopped"
+  else
+    echo "Failed to stop container"
+    exit 1
+  fi
+}
+
+cmd_restart() {
+  require_running
+  if lxc restart "$CONTAINER_NAME"; then
+    echo "Container restarted"
+  else
+    echo "Failed to restart container"
+    exit 1
+  fi
+}
+
+cmd_status() {
+  require_container
+  echo "=== Container Status ==="
+  lxc info "$CONTAINER_NAME" | grep -E "^(Name|Status|Type|Architecture|PID|Processes|Memory|Disk|Network)"
+  echo ""
+  echo "=== IP Address ==="
+  lxc list "$CONTAINER_NAME" -f csv -c 4 | head -1
+  echo ""
+  echo "=== Snapshots ==="
+  lxc info "$CONTAINER_NAME" | grep -A 100 "^Snapshots:" || echo "  None"
+}
+
+cmd_login() {
+  require_running
+  echo "Opening Claude Code for browser authentication..."
+  echo "Complete the OAuth flow in your browser, then exit with /exit."
+  lxc exec "$CONTAINER_NAME" -t -- su - ubuntu -c "claude"
+}
+
+cmd_claude() {
+  require_running
+  lxc exec "$CONTAINER_NAME" -t -- su - ubuntu -c \
+    "cd /home/ubuntu/project && claude --dangerously-skip-permissions"
+}
+
+cmd_claude_resume() {
+  require_running
+  lxc exec "$CONTAINER_NAME" -t -- su - ubuntu -c \
+    "cd /home/ubuntu/project && claude --dangerously-skip-permissions --resume"
+}
+
+cmd_claude_run() {
+  require_running
+  local prompt="$1"
+  if [[ -z "$prompt" ]]; then
+    echo "Error: provide a prompt string"
+    echo "  ./sandbox.sh claude-run \"fix the tests\""
+    exit 1
+  fi
+  local escaped
+  escaped=$(printf '%q' "$prompt")
+  lxc exec "$CONTAINER_NAME" -- su - ubuntu -c \
+    "cd /home/ubuntu/project && claude --dangerously-skip-permissions -p $escaped"
+}
+
+cmd_sync() {
+  require_running
+  if lxc exec "$CONTAINER_NAME" -- su - ubuntu -c \
+    "rsync -av --delete \
+      --exclude=node_modules \
+      --exclude=.git \
+      --exclude=dist \
+      --exclude=build \
+      /home/ubuntu/project-src/ /home/ubuntu/project/"; then
+    echo "Project synced"
+  else
+    echo "Sync failed"
+    exit 1
+  fi
+}
+
+cmd_exec() {
+  require_running
+  if [[ $# -eq 0 ]]; then
+    echo "Error: provide a command to run"
+    echo "  ./sandbox.sh exec npm test"
+    exit 1
+  fi
+  local cmd=""
+  local arg
+  for arg in "$@"; do
+    cmd+=" $(printf '%q' "$arg")"
+  done
+  lxc exec "$CONTAINER_NAME" -- su - ubuntu -c "cd /home/ubuntu/project &&$cmd"
+}
+
+cmd_pull() {
+  require_running
+  local src="$1"
+  local dest="${2:-.}"
+  if [[ -z "$src" ]]; then
+    echo "Error: specify path to pull"
+    echo "  ./sandbox.sh pull /home/ubuntu/project/dist/ ./dist/"
+    exit 1
+  fi
+  if lxc file pull -r "$CONTAINER_NAME$src" "$dest"; then
+    echo "Pulled $src -> $dest"
+  else
+    echo "Pull failed"
+    exit 1
+  fi
+}
+
+cmd_push() {
+  require_running
+  local src="$1"
+  local dest="${2:-/home/ubuntu/project/}"
+  if [[ -z "$src" ]]; then
+    echo "Error: specify file to push"
+    exit 1
+  fi
+  if [[ -d "$src" ]]; then
+    if lxc file push -r "$src" "$CONTAINER_NAME$dest"; then
+      echo "Pushed $src -> $dest"
+    else
+      echo "Push failed"
+      exit 1
+    fi
+  else
+    if lxc file push "$src" "$CONTAINER_NAME$dest"; then
+      echo "Pushed $src -> $dest"
+    else
+      echo "Push failed"
+      exit 1
+    fi
+  fi
+}
+
+cmd_snapshot() {
+  require_container
+  local name="${1:-snap-$(date +%Y%m%d-%H%M%S)}"
+  if lxc snapshot "$CONTAINER_NAME" "$name"; then
+    echo "Snapshot '$name' created"
+  else
+    echo "Snapshot failed"
+    exit 1
+  fi
+}
+
+cmd_restore() {
+  require_container
+  local name="$1"
+  if [[ -z "$name" ]]; then
+    echo "Error: specify snapshot name"
+    echo "Available snapshots:"
+    lxc info "$CONTAINER_NAME" | grep -A 100 "^Snapshots:" || echo "  None"
+    exit 1
+  fi
+  echo "Restoring to snapshot '$name'..."
+  if lxc restore "$CONTAINER_NAME" "$name"; then
+    lxc start "$CONTAINER_NAME" 2>/dev/null || true
+    echo "Restored and restarted"
+  else
+    echo "Restore failed"
+    exit 1
+  fi
+}
+
+cmd_snapshots() {
+  require_container
+  lxc info "$CONTAINER_NAME" | grep -A 100 "^Snapshots:" || echo "No snapshots"
+}
+
+cmd_logs() {
+  require_running
+  lxc exec "$CONTAINER_NAME" -- su - ubuntu -c "docker compose logs -f" 2>/dev/null || \
+  lxc exec "$CONTAINER_NAME" -- su - ubuntu -c "docker logs --tail 100 -f \$(docker ps -q)" 2>/dev/null || \
+  echo "No running Docker containers found"
+}
+
+cmd_docker() {
+  require_running
+  local cmd="docker"
+  local arg
+  for arg in "$@"; do
+    cmd+=" $(printf '%q' "$arg")"
+  done
+  lxc exec "$CONTAINER_NAME" -- su - ubuntu -c "$cmd"
+}
+
+cmd_health() {
+  require_running
+  echo "=== Health Check: $CONTAINER_NAME ==="
+  local ok=true
+
+  # Network
+  if lxc exec "$CONTAINER_NAME" -- ping -c 1 -W 2 8.8.8.8 &>/dev/null; then
+    echo "  Network:      ok"
+  else
+    echo "  Network:      FAILED"
+    ok=false
+  fi
+
+  # Docker
+  if lxc exec "$CONTAINER_NAME" -- su - ubuntu -c "docker info" &>/dev/null; then
+    echo "  Docker:       ok"
+  else
+    echo "  Docker:       FAILED"
+    ok=false
+  fi
+
+  # Claude Code
+  if lxc exec "$CONTAINER_NAME" -- su - ubuntu -c "claude --version" &>/dev/null; then
+    echo "  Claude Code:  ok"
+  else
+    echo "  Claude Code:  FAILED"
+    ok=false
+  fi
+
+  # Project directory
+  if lxc exec "$CONTAINER_NAME" -- test -d /home/ubuntu/project; then
+    echo "  Project dir:  ok"
+  else
+    echo "  Project dir:  missing"
+    ok=false
+  fi
+
+  # Source mount
+  if lxc exec "$CONTAINER_NAME" -- test -d /home/ubuntu/project-src; then
+    echo "  Source mount: ok"
+  else
+    echo "  Source mount: not mounted"
+  fi
+
+  $ok || { echo ""; echo "Some checks failed."; exit 1; }
+}
+
+cmd_destroy() {
+  require_container
+  echo "Warning: This will permanently delete container '$CONTAINER_NAME' and all snapshots."
+  read -rp "Type the container name to confirm: " confirm
+  if [[ "$confirm" == "$CONTAINER_NAME" ]]; then
+    lxc delete "$CONTAINER_NAME" --force
+    echo "Container destroyed"
+  else
+    echo "Aborted."
+  fi
+}
+
+# --- Main dispatch -----------------------------------------------------------
+case "${1:-help}" in
+  shell)         cmd_shell ;;
+  root)          cmd_root ;;
+  start)         cmd_start ;;
+  stop)          cmd_stop ;;
+  restart)       cmd_restart ;;
+  status)        cmd_status ;;
+  login)         cmd_login ;;
+  claude)        cmd_claude ;;
+  claude-run)    shift; cmd_claude_run "$@" ;;
+  claude-resume) cmd_claude_resume ;;
+  sync)          cmd_sync ;;
+  exec)          shift; cmd_exec "$@" ;;
+  pull)          shift; cmd_pull "$@" ;;
+  push)          shift; cmd_push "$@" ;;
+  snapshot)      shift; cmd_snapshot "$@" ;;
+  restore)       shift; cmd_restore "$@" ;;
+  snapshots)     cmd_snapshots ;;
+  logs)          cmd_logs ;;
+  docker)        shift; cmd_docker "$@" ;;
+  health|health-check) cmd_health ;;
+  destroy)       cmd_destroy ;;
+  help|*)        usage ;;
+esac
