@@ -323,6 +323,10 @@ lxc config device set claude-sandbox root size=50GB
   lxc config set claude-sandbox limits.cpu 4
   ```
 
+## Alternatives
+
+- **[code-on-incus](https://github.com/mensfeld/code-on-incus)** — A full-featured Incus-based sandbox with resource management, networking profiles, and multi-container orchestration. It does a lot more than this project. If you want something more mature with more features, start there. This project is three shell scripts you can grok 10 minutes.
+
 ## License
 
 MIT
