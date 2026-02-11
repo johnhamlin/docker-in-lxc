@@ -1,14 +1,14 @@
 #!/bin/bash
 # =============================================================================
-# Claude Code LXD Sandbox - Management Helper
-# Common operations for your sandbox
+# Docker-in-LXC - Management Helper
+# Common operations for your container
 # =============================================================================
 
-CONTAINER_NAME="${CLAUDE_SANDBOX:-claude-sandbox}"
+CONTAINER_NAME="${DILXC_CONTAINER:-docker-lxc}"
 
 usage() {
   cat << EOF
-Usage: ./sandbox.sh <command> [options]
+Usage: ./dilxc.sh <command> [options]
 
 Commands:
   shell                  Open a shell in the container as ubuntu user
@@ -39,20 +39,20 @@ Commands:
   destroy                Delete the container entirely (asks for confirmation)
 
 Environment:
-  CLAUDE_SANDBOX         Container name (default: claude-sandbox)
+  DILXC_CONTAINER        Container name (default: docker-lxc)
 
 Examples:
-  ./sandbox.sh login                                  # first-time auth
-  ./sandbox.sh shell
-  ./sandbox.sh claude
-  ./sandbox.sh claude-run "fix the failing tests in src/api/"
-  ./sandbox.sh claude-resume                          # pick up where you left off
-  ./sandbox.sh exec npm test                          # run a command in project dir
-  ./sandbox.sh snapshot before-big-refactor
-  ./sandbox.sh restore before-big-refactor
-  ./sandbox.sh pull /home/ubuntu/project/dist/ ./dist/
-  ./sandbox.sh docker compose logs -f
-  ./sandbox.sh health-check
+  ./dilxc.sh login                                  # first-time auth
+  ./dilxc.sh shell
+  ./dilxc.sh claude
+  ./dilxc.sh claude-run "fix the failing tests in src/api/"
+  ./dilxc.sh claude-resume                          # pick up where you left off
+  ./dilxc.sh exec npm test                          # run a command in project dir
+  ./dilxc.sh snapshot before-big-refactor
+  ./dilxc.sh restore before-big-refactor
+  ./dilxc.sh pull /home/ubuntu/project/dist/ ./dist/
+  ./dilxc.sh docker compose logs -f
+  ./dilxc.sh health-check
 EOF
 }
 
@@ -72,7 +72,7 @@ require_running() {
   state=$(lxc info "$CONTAINER_NAME" | grep -oP 'Status: \K\w+')
   if [[ "$state" != "RUNNING" ]]; then
     echo "Error: container '$CONTAINER_NAME' is $state (not running)"
-    echo "  Start it with: ./sandbox.sh start"
+    echo "  Start it with: ./dilxc.sh start"
     exit 1
   fi
 }
@@ -125,7 +125,7 @@ cmd_status() {
   lxc info "$CONTAINER_NAME" | grep -E "^(Name|Status|Type|Architecture|PID|Processes|Memory|Disk|Network)"
   echo ""
   echo "=== IP Address ==="
-  lxc list "$CONTAINER_NAME" -f csv -c 4 | head -1
+  lxc list "$CONTAINER_NAME" -f csv -c 4 | tr -d '"' | grep eth0
   echo ""
   echo "=== Snapshots ==="
   lxc info "$CONTAINER_NAME" | grep -A 100 "^Snapshots:" || echo "  None"
@@ -155,7 +155,7 @@ cmd_claude_run() {
   local prompt="$1"
   if [[ -z "$prompt" ]]; then
     echo "Error: provide a prompt string"
-    echo "  ./sandbox.sh claude-run \"fix the tests\""
+    echo "  ./dilxc.sh claude-run \"fix the tests\""
     exit 1
   fi
   local escaped
@@ -184,7 +184,7 @@ cmd_exec() {
   require_running
   if [[ $# -eq 0 ]]; then
     echo "Error: provide a command to run"
-    echo "  ./sandbox.sh exec npm test"
+    echo "  ./dilxc.sh exec npm test"
     exit 1
   fi
   local cmd=""
@@ -201,7 +201,7 @@ cmd_pull() {
   local dest="${2:-.}"
   if [[ -z "$src" ]]; then
     echo "Error: specify path to pull"
-    echo "  ./sandbox.sh pull /home/ubuntu/project/dist/ ./dist/"
+    echo "  ./dilxc.sh pull /home/ubuntu/project/dist/ ./dist/"
     exit 1
   fi
   if lxc file pull -r "$CONTAINER_NAME$src" "$dest"; then
@@ -322,7 +322,7 @@ cmd_health() {
   if lxc exec "$CONTAINER_NAME" -- test -d /home/ubuntu/project; then
     echo "  Project dir:  ok"
   else
-    echo "  Project dir:  missing"
+    echo "  Project dir:  FAILED"
     ok=false
   fi
 
@@ -330,7 +330,8 @@ cmd_health() {
   if lxc exec "$CONTAINER_NAME" -- test -d /home/ubuntu/project-src; then
     echo "  Source mount: ok"
   else
-    echo "  Source mount: not mounted"
+    echo "  Source mount: FAILED"
+    ok=false
   fi
 
   $ok || { echo ""; echo "Some checks failed."; exit 1; }
