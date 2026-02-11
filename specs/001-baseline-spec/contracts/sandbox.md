@@ -1,14 +1,14 @@
-# CLI Contract: sandbox.sh
+# CLI Contract: dilxc.sh
 
-**Script**: `sandbox.sh`
+**Script**: `dilxc.sh`
 **Execution context**: Host (Ubuntu homelab server)
 **Error handling**: No `set -e` — handles failures per-command
-**Container selection**: `$CLAUDE_SANDBOX` env var (default: `claude-sandbox`)
+**Container selection**: `$DILXC_CONTAINER` env var (default: `docker-lxc`)
 
 ## Synopsis
 
 ```
-./sandbox.sh <command> [options]
+./dilxc.sh <command> [options]
 ```
 
 ## Subcommands
@@ -81,7 +81,7 @@
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CLAUDE_SANDBOX` | `claude-sandbox` | Target container name for all operations |
+| `DILXC_CONTAINER` | `docker-lxc` | Target container name for all operations |
 
 ## Exit Codes
 
@@ -108,38 +108,38 @@ Three commands use `printf '%q'` for safe shell escaping:
 
 ```bash
 # Authentication
-./sandbox.sh login
+./dilxc.sh login
 
 # Interactive Claude
-./sandbox.sh claude
+./dilxc.sh claude
 
 # One-shot with special characters
-./sandbox.sh claude-run "fix the tests in src/api/ and run 'npm test'"
+./dilxc.sh claude-run "fix the tests in src/api/ and run 'npm test'"
 
 # Resume last session
-./sandbox.sh claude-resume
+./dilxc.sh claude-resume
 
 # Sync project files
-./sandbox.sh sync
+./dilxc.sh sync
 
 # Run a command
-./sandbox.sh exec npm test
+./dilxc.sh exec npm test
 
 # Snapshot workflow
-./sandbox.sh snapshot before-refactor
-./sandbox.sh restore before-refactor
+./dilxc.sh snapshot before-refactor
+./dilxc.sh restore before-refactor
 
 # File transfer
-./sandbox.sh pull /home/ubuntu/project/dist/ ./dist/
-./sandbox.sh push local-file.txt /home/ubuntu/project/
+./dilxc.sh pull /home/ubuntu/project/dist/ ./dist/
+./dilxc.sh push local-file.txt /home/ubuntu/project/
 
 # Docker passthrough
-./sandbox.sh docker compose up -d
-./sandbox.sh docker ps
+./dilxc.sh docker compose up -d
+./dilxc.sh docker ps
 
 # Health check
-./sandbox.sh health-check
+./dilxc.sh health-check
 
 # Multiple sandboxes
-CLAUDE_SANDBOX=project-b ./sandbox.sh claude
+DILXC_CONTAINER=project-b ./dilxc.sh claude
 ```

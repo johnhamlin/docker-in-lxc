@@ -70,8 +70,8 @@ Written to `/home/ubuntu/.config/fish/config.fish`:
 | Config | Value |
 |--------|-------|
 | `init.defaultBranch` | `main` |
-| `user.name` | `Claude Code (sandbox)` |
-| `user.email` | `claude-sandbox@localhost` |
+| `user.name` | `Claude Code (docker-lxc)` |
+| `user.email` | `docker-lxc@localhost` |
 
 ## Exit Codes
 

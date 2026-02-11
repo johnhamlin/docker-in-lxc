@@ -15,7 +15,7 @@
 
 | Flag | Long | Argument | Default | Description |
 |------|------|----------|---------|-------------|
-| `-n` | `--name` | `<name>` | `$CLAUDE_SANDBOX` or `claude-sandbox` | Container name |
+| `-n` | `--name` | `<name>` | `$DILXC_CONTAINER` or `docker-lxc` | Container name |
 | `-p` | `--project` | `<path>` | *(required)* | Host project directory to mount read-only |
 | `-d` | `--deploy` | `<path>` | *(none)* | Host directory to mount read-write for deploy output |
 | `-f` | `--fish` | *(none)* | `false` | Install fish shell and set as default |
@@ -25,7 +25,7 @@
 
 | Variable | Effect |
 |----------|--------|
-| `CLAUDE_SANDBOX` | Default container name if `-n` not specified |
+| `DILXC_CONTAINER` | Default container name if `-n` not specified |
 | `ANTHROPIC_API_KEY` | If set, injected into container's shell config for API key auth |
 
 ## Execution Steps
@@ -63,7 +63,7 @@ Partially idempotent:
 
 ```bash
 # Basic setup
-./setup-host.sh -n claude-sandbox -p /home/john/dev/myproject/
+./setup-host.sh -n docker-lxc -p /home/john/dev/myproject/
 
 # With fish shell
 ./setup-host.sh -p /home/john/dev/myproject/ --fish

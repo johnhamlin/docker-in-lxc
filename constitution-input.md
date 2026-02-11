@@ -14,7 +14,7 @@ Each script runs in exactly one place:
 
 - `setup-host.sh` — runs on the host, creates and provisions the container
 - `provision-container.sh` — runs inside the container, installs tools and configures the user environment
-- `sandbox.sh` — runs on the host, wraps `lxc` commands for day-to-day use
+- `dilxc.sh` — runs on the host, wraps `lxc` commands for day-to-day use
 
 When adding functionality, add it to the appropriate existing script. Do not create new scripts unless there's a genuinely new execution context.
 
@@ -28,7 +28,7 @@ LXD is the security boundary. Don't add sandboxing layers inside the container �
 
 ### Don't touch the host
 
-The host is a shared machine running other services — Docker stacks, other LXD containers, production workloads. Every `lxc` command is scoped to `$CLAUDE_SANDBOX`. Never operate on other containers, never modify host-level config, never assume the sandbox is the only thing running. Each container is independent: one project mount, its own snapshots, no cross-container state.
+The host is a shared machine running other services — Docker stacks, other LXD containers, production workloads. Every `lxc` command is scoped to `$DILXC_CONTAINER`. Never operate on other containers, never modify host-level config, never assume the sandbox is the only thing running. Each container is independent: one project mount, its own snapshots, no cross-container state.
 
 ### LXD today, Incus eventually
 
@@ -48,11 +48,11 @@ Bash configuration is always written. Fish is only configured when the `--fish` 
 
 ### Error handling
 
-`setup-host.sh` and `provision-container.sh` use `set -euo pipefail`. If setup fails partway, the recovery path is deleting the container and starting over, not trying to resume. `sandbox.sh` does not use `set -e` because it needs to handle failures gracefully in individual commands.
+`setup-host.sh` and `provision-container.sh` use `set -euo pipefail`. If setup fails partway, the recovery path is deleting the container and starting over, not trying to resume. `dilxc.sh` does not use `set -e` because it needs to handle failures gracefully in individual commands.
 
 ### Rsync excludes stay synchronized
 
-The rsync exclude list (`node_modules`, `.git`, `dist`, `build`) appears in three places: the bash `sync-project` function, the fish `sync-project` function, and the `sandbox.sh sync` command. These must always match.
+The rsync exclude list (`node_modules`, `.git`, `dist`, `build`) appears in three places: the bash `sync-project` function, the fish `sync-project` function, and the `dilxc.sh sync` command. These must always match.
 
 ### Keep arguments safe
 

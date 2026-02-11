@@ -21,7 +21,7 @@ Three scripts, each with a distinct execution context:
 
 2. **`provision-container.sh`** — Runs inside the container (pushed by setup-host.sh). Installs Docker CE, Node.js 22 (NodeSource), Claude Code (npm global), uv, Spec Kit (`specify-cli`), and dev tools. Configures the `ubuntu` user with aliases (`cc`, `cc-resume`, `cc-prompt`), helper functions (`sync-project`, `deploy`), and `~/.local/bin` on PATH in bash. Fish shell is opt-in via `--fish` flag (installs fish, writes fish config, sets fish as default shell).
 
-3. **`sandbox.sh`** — Runs on the host. Day-to-day management wrapper around `lxc` commands. Container name comes from `CLAUDE_SANDBOX` env var (default: `claude-sandbox`).
+3. **`dilxc.sh`** — Runs on the host. Day-to-day management wrapper around `lxc` commands. Container name comes from `DILXC_CONTAINER` env var (default: `docker-lxc`).
 
 ## File Strategy Inside the Container
 
@@ -36,32 +36,32 @@ Three scripts, each with a distinct execution context:
 ./setup-host.sh --help
 
 # Initial setup (run on host)
-./setup-host.sh -n claude-sandbox -p /home/john/dev/jellyfish/
-./setup-host.sh -n claude-sandbox -p /home/john/dev/jellyfish/ --fish
+./setup-host.sh -n docker-lxc -p /home/john/dev/jellyfish/
+./setup-host.sh -n docker-lxc -p /home/john/dev/jellyfish/ --fish
 
 # Authenticate (one-time, after setup)
-./sandbox.sh login
+./dilxc.sh login
 
 # Re-provision an existing container without recreating it
-lxc exec claude-sandbox -- rm -f /tmp/provision-container.sh
-lxc file push provision-container.sh claude-sandbox/tmp/provision-container.sh
-lxc exec claude-sandbox -- chmod +x /tmp/provision-container.sh
-lxc exec claude-sandbox -- /tmp/provision-container.sh
+lxc exec docker-lxc -- rm -f /tmp/provision-container.sh
+lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
+lxc exec docker-lxc -- chmod +x /tmp/provision-container.sh
+lxc exec docker-lxc -- /tmp/provision-container.sh
 
 # Day-to-day (run on host)
-./sandbox.sh shell                # interactive shell as ubuntu
-./sandbox.sh claude               # interactive Claude Code (autonomous)
-./sandbox.sh claude-run "prompt"  # one-shot Claude Code
-./sandbox.sh claude-resume        # resume last session
-./sandbox.sh exec npm test        # run a command in the project dir
-./sandbox.sh snapshot <name>      # btrfs snapshot
-./sandbox.sh restore <name>       # instant rollback (auto-restarts)
-./sandbox.sh sync                 # rsync project-src -> project
-./sandbox.sh docker <args>        # run docker commands inside sandbox
-./sandbox.sh health-check         # verify container, network, Docker, Claude
+./dilxc.sh shell                # interactive shell as ubuntu
+./dilxc.sh claude               # interactive Claude Code (autonomous)
+./dilxc.sh claude-run "prompt"  # one-shot Claude Code
+./dilxc.sh claude-resume        # resume last session
+./dilxc.sh exec npm test        # run a command in the project dir
+./dilxc.sh snapshot <name>      # btrfs snapshot
+./dilxc.sh restore <name>       # instant rollback (auto-restarts)
+./dilxc.sh sync                 # rsync project-src -> project
+./dilxc.sh docker <args>        # run docker commands inside sandbox
+./dilxc.sh health-check         # verify container, network, Docker, Claude
 
 # Multiple containers
-CLAUDE_SANDBOX=other-name ./sandbox.sh shell
+DILXC_CONTAINER=other-name ./dilxc.sh shell
 ```
 
 ## Known Issues
@@ -97,18 +97,18 @@ Reload with `sudo ufw reload`. No need for `netfilter-persistent` (it's in `rc` 
 
 When re-pushing `provision-container.sh` to an existing container, `lxc file push` silently fails to overwrite the file (reports "Forbidden" after showing 100% progress). Delete the target file first:
 ```bash
-lxc exec claude-sandbox -- rm -f /tmp/provision-container.sh
-lxc file push provision-container.sh claude-sandbox/tmp/provision-container.sh
+lxc exec docker-lxc -- rm -f /tmp/provision-container.sh
+lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 ```
 
 ## Editing Notes
 
 - All three scripts use `#!/bin/bash`. `setup-host.sh` and `provision-container.sh` use `set -euo pipefail`.
 - `provision-container.sh` always writes bash config. Fish config is only written when `--fish` is passed — if changing aliases or helper functions, update both shell configs within that script.
-- `sandbox.sh` uses a case-based dispatch pattern at the bottom for subcommand routing. The `require_container` and `require_running` helpers validate container state before each command.
-- The `sync-project` function (and `sandbox.sh sync`) excludes `node_modules`, `.git`, `dist`, and `build` from rsync — keep these lists in sync across bash config, fish config, and `sandbox.sh`.
-- `sandbox.sh` uses `-t` flag on `lxc exec` for interactive commands (`shell`, `root`, `login`, `claude`, `claude-resume`) to allocate a proper TTY.
-- `sandbox.sh` uses `printf %q` for safe shell escaping in `cmd_claude_run` and `cmd_docker` to handle arguments with spaces and special characters.
+- `dilxc.sh` uses a case-based dispatch pattern at the bottom for subcommand routing. The `require_container` and `require_running` helpers validate container state before each command.
+- The `sync-project` function (and `dilxc.sh sync`) excludes `node_modules`, `.git`, `dist`, and `build` from rsync — keep these lists in sync across bash config, fish config, and `dilxc.sh`.
+- `dilxc.sh` uses `-t` flag on `lxc exec` for interactive commands (`shell`, `root`, `login`, `claude`, `claude-resume`) to allocate a proper TTY.
+- `dilxc.sh` uses `printf %q` for safe shell escaping in `cmd_claude_run` and `cmd_docker` to handle arguments with spaces and special characters.
 - `provision-container.sh` uses `gpg --dearmor --yes` so the Docker GPG key step is idempotent on re-provisioning.
 
 ## Active Technologies

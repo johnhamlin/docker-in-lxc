@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Claude Code LXD Sandbox - Host Setup Script
+# Docker-in-LXC - Host Setup Script
 # Run this on your Ubuntu homelab server
 # =============================================================================
 
@@ -13,14 +13,14 @@ Usage: ./setup-host.sh [options]
 Creates an LXD container with Claude Code, Docker, and dev tools.
 
 Options:
-  -n, --name <name>      Container name (default: \$CLAUDE_SANDBOX or claude-sandbox)
+  -n, --name <name>      Container name (default: \$DILXC_CONTAINER or docker-lxc)
   -p, --project <path>   Host project directory to mount read-only
   -d, --deploy <path>    Host directory to mount read-write for deploy output
   -f, --fish             Install fish shell and set as default (default: bash only)
   -h, --help             Show this help message
 
 Examples:
-  ./setup-host.sh -n claude-sandbox -p /home/john/dev/myproject/
+  ./setup-host.sh -n docker-lxc -p /home/john/dev/myproject/
   ./setup-host.sh -p /home/john/dev/myproject/ --fish
   ./setup-host.sh -p /home/john/dev/myproject/ -d /srv/www
   ANTHROPIC_API_KEY=sk-... ./setup-host.sh -p /path/to/project
@@ -28,7 +28,7 @@ EOF
 }
 
 # --- Configuration -----------------------------------------------------------
-CONTAINER_NAME="${CLAUDE_SANDBOX:-claude-sandbox}"
+CONTAINER_NAME="${DILXC_CONTAINER:-docker-lxc}"
 UBUNTU_VERSION="24.04"
 PROJECT_PATH=""
 DEPLOY_PATH=""
@@ -53,7 +53,7 @@ if [[ -z "$PROJECT_PATH" ]]; then
 fi
 
 echo "============================================="
-echo "  Claude Code LXD Sandbox Setup"
+echo "  Docker-in-LXC Setup"
 echo "  Container: $CONTAINER_NAME"
 echo "============================================="
 echo ""
@@ -167,7 +167,7 @@ else
   echo "  Claude Pro/Max subscribers: authenticate via browser login."
   echo "  After setup completes, run:"
   echo ""
-  echo "    ./sandbox.sh login"
+  echo "    ./dilxc.sh login"
   echo ""
   echo "  This opens an interactive Claude session where you can complete"
   echo "  the OAuth flow in your browser. You only need to do this once."
@@ -190,13 +190,13 @@ echo "============================================="
 echo ""
 echo "  Quick reference:"
 echo ""
-echo "  ./sandbox.sh shell                # shell into the container"
-echo "  ./sandbox.sh sync                 # copy project source to working dir"
-echo "  ./sandbox.sh claude               # start Claude Code (autonomous)"
-echo "  ./sandbox.sh claude-run \"prompt\"   # one-shot Claude Code"
-echo "  ./sandbox.sh claude-resume        # resume last session"
-echo "  ./sandbox.sh snapshot <name>      # btrfs snapshot"
-echo "  ./sandbox.sh restore <name>       # instant rollback"
-echo "  ./sandbox.sh pull <path> [dest]   # pull files to host"
-echo "  ./sandbox.sh health-check         # verify everything works"
+echo "  ./dilxc.sh shell                # shell into the container"
+echo "  ./dilxc.sh sync                 # copy project source to working dir"
+echo "  ./dilxc.sh claude               # start Claude Code (autonomous)"
+echo "  ./dilxc.sh claude-run \"prompt\"   # one-shot Claude Code"
+echo "  ./dilxc.sh claude-resume        # resume last session"
+echo "  ./dilxc.sh snapshot <name>      # btrfs snapshot"
+echo "  ./dilxc.sh restore <name>       # instant rollback"
+echo "  ./dilxc.sh pull <path> [dest]   # pull files to host"
+echo "  ./dilxc.sh health-check         # verify everything works"
 echo ""

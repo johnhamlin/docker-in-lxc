@@ -1,4 +1,4 @@
-# Feature Specification: LXD Sandbox for Autonomous Claude Code
+# Feature Specification: Docker-in-LXC
 
 **Feature Branch**: `001-baseline-spec`
 **Created**: 2026-02-11
@@ -9,8 +9,8 @@
 
 ### Session 2026-02-11
 
-- Q: Does sync (`sandbox.sh sync` / `sync-project`) use `--delete`, removing container-only files, or preserve them? → A: Destructive sync with `--delete` — full reset to source. Use GitHub to get changes out of the container.
-- Q: Is re-provisioning a supported workflow (sandbox.sh subcommand + user story) or an escape hatch? → A: Escape hatch only — documented in CLAUDE.md, no formal subcommand or user story. Primary recovery is snapshot restore or delete-and-recreate.
+- Q: Does sync (`dilxc.sh sync` / `sync-project`) use `--delete`, removing container-only files, or preserve them? → A: Destructive sync with `--delete` — full reset to source. Use GitHub to get changes out of the container.
+- Q: Is re-provisioning a supported workflow (dilxc.sh subcommand + user story) or an escape hatch? → A: Escape hatch only — documented in CLAUDE.md, no formal subcommand or user story. Primary recovery is snapshot restore or delete-and-recreate.
 - Q: What output do scripts produce during execution — silent, verbose, or mixed? → A: Verbose by default with step-by-step progress output to stdout, errors to stderr. No `--quiet` flag. Visibility builds trust for a homelab tool.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -43,9 +43,9 @@ A developer wants Claude Code to work on their project inside the sandbox, opera
 
 **Acceptance Scenarios**:
 
-1. **Given** a running sandbox with Claude Code authenticated, **When** the user runs `sandbox.sh claude`, **Then** an interactive Claude Code session starts in `/home/ubuntu/project` with `--dangerously-skip-permissions` and a TTY allocated.
-2. **Given** a running sandbox, **When** the user runs `sandbox.sh claude-run "refactor the auth module"`, **Then** Claude Code executes the prompt non-interactively in the project directory, with the prompt safely shell-escaped.
-3. **Given** a previous Claude session exists, **When** the user runs `sandbox.sh claude-resume`, **Then** the most recent session resumes with its full context.
+1. **Given** a running sandbox with Claude Code authenticated, **When** the user runs `dilxc.sh claude`, **Then** an interactive Claude Code session starts in `/home/ubuntu/project` with `--dangerously-skip-permissions` and a TTY allocated.
+2. **Given** a running sandbox, **When** the user runs `dilxc.sh claude-run "refactor the auth module"`, **Then** Claude Code executes the prompt non-interactively in the project directory, with the prompt safely shell-escaped.
+3. **Given** a previous Claude session exists, **When** the user runs `dilxc.sh claude-resume`, **Then** the most recent session resumes with its full context.
 
 ---
 
@@ -59,7 +59,7 @@ After creating a sandbox, the developer needs to authenticate Claude Code before
 
 **Acceptance Scenarios**:
 
-1. **Given** a newly created sandbox without authentication, **When** the user runs `sandbox.sh login`, **Then** an interactive session opens with TTY allocated, allowing the user to complete browser OAuth and exit.
+1. **Given** a newly created sandbox without authentication, **When** the user runs `dilxc.sh login`, **Then** an interactive session opens with TTY allocated, allowing the user to complete browser OAuth and exit.
 2. **Given** the `ANTHROPIC_API_KEY` environment variable is set before running `setup-host.sh`, **When** provisioning completes, **Then** the API key is written into the container's shell configuration and Claude Code can authenticate without browser OAuth.
 
 ---
@@ -74,10 +74,10 @@ A developer wants to create save points before risky operations and instantly ro
 
 **Acceptance Scenarios**:
 
-1. **Given** a running sandbox, **When** the user runs `sandbox.sh snapshot before-refactor`, **Then** a btrfs snapshot named `before-refactor` is created.
-2. **Given** a running sandbox, **When** the user runs `sandbox.sh snapshot` without a name, **Then** a snapshot with an auto-generated timestamp name is created.
-3. **Given** a snapshot named `before-refactor` exists, **When** the user runs `sandbox.sh restore before-refactor`, **Then** the container is restored to that snapshot state and automatically restarted.
-4. **Given** multiple snapshots exist, **When** the user runs `sandbox.sh snapshots`, **Then** all snapshots are listed.
+1. **Given** a running sandbox, **When** the user runs `dilxc.sh snapshot before-refactor`, **Then** a btrfs snapshot named `before-refactor` is created.
+2. **Given** a running sandbox, **When** the user runs `dilxc.sh snapshot` without a name, **Then** a snapshot with an auto-generated timestamp name is created.
+3. **Given** a snapshot named `before-refactor` exists, **When** the user runs `dilxc.sh restore before-refactor`, **Then** the container is restored to that snapshot state and automatically restarted.
+4. **Given** multiple snapshots exist, **When** the user runs `dilxc.sh snapshots`, **Then** all snapshots are listed.
 
 ---
 
@@ -91,10 +91,10 @@ A developer needs to refresh the writable working copy from the host project (af
 
 **Acceptance Scenarios**:
 
-1. **Given** the host project has new changes, **When** the user runs `sandbox.sh sync`, **Then** the writable working copy at `/home/ubuntu/project` is replaced via rsync with `--delete` from `/home/ubuntu/project-src`, excluding `node_modules`, `.git`, `dist`, and `build`. Files existing only in the working copy are removed.
-2. **Given** a file exists in the container, **When** the user runs `sandbox.sh pull /home/ubuntu/project/output.txt ./`, **Then** the file is copied from the container to the host.
-3. **Given** a file exists on the host, **When** the user runs `sandbox.sh push local-file.txt /home/ubuntu/project/`, **Then** the file is copied into the container.
-4. **Given** the `sync-project` bash function is called inside the container, **When** it completes, **Then** it performs the same rsync with the same exclusion list as `sandbox.sh sync`.
+1. **Given** the host project has new changes, **When** the user runs `dilxc.sh sync`, **Then** the writable working copy at `/home/ubuntu/project` is replaced via rsync with `--delete` from `/home/ubuntu/project-src`, excluding `node_modules`, `.git`, `dist`, and `build`. Files existing only in the working copy are removed.
+2. **Given** a file exists in the container, **When** the user runs `dilxc.sh pull /home/ubuntu/project/output.txt ./`, **Then** the file is copied from the container to the host.
+3. **Given** a file exists on the host, **When** the user runs `dilxc.sh push local-file.txt /home/ubuntu/project/`, **Then** the file is copied into the container.
+4. **Given** the `sync-project` bash function is called inside the container, **When** it completes, **Then** it performs the same rsync with the same exclusion list as `dilxc.sh sync`.
 5. **Given** a deploy mount is configured at `/mnt/deploy`, **When** the user calls the `deploy` function inside the container, **Then** output files are rsynced to the deploy mount.
 
 ---
@@ -109,13 +109,13 @@ A developer manages the sandbox container's lifecycle — starting, stopping, re
 
 **Acceptance Scenarios**:
 
-1. **Given** a stopped sandbox, **When** the user runs `sandbox.sh start`, **Then** the container starts.
-2. **Given** a running sandbox, **When** the user runs `sandbox.sh stop`, **Then** the container stops.
-3. **Given** a running sandbox, **When** the user runs `sandbox.sh restart`, **Then** the container stops and starts again.
-4. **Given** a running sandbox, **When** the user runs `sandbox.sh status`, **Then** the output shows container info, IP address, and available snapshots.
-5. **Given** a running sandbox, **When** the user runs `sandbox.sh shell`, **Then** an interactive bash shell opens as the `ubuntu` user with a TTY allocated.
-6. **Given** a running sandbox, **When** the user runs `sandbox.sh root`, **Then** an interactive root shell opens with a TTY allocated.
-7. **Given** a sandbox exists, **When** the user runs `sandbox.sh destroy`, **Then** a confirmation prompt appears, and upon confirmation, the container is deleted.
+1. **Given** a stopped sandbox, **When** the user runs `dilxc.sh start`, **Then** the container starts.
+2. **Given** a running sandbox, **When** the user runs `dilxc.sh stop`, **Then** the container stops.
+3. **Given** a running sandbox, **When** the user runs `dilxc.sh restart`, **Then** the container stops and starts again.
+4. **Given** a running sandbox, **When** the user runs `dilxc.sh status`, **Then** the output shows container info, IP address, and available snapshots.
+5. **Given** a running sandbox, **When** the user runs `dilxc.sh shell`, **Then** an interactive bash shell opens as the `ubuntu` user with a TTY allocated.
+6. **Given** a running sandbox, **When** the user runs `dilxc.sh root`, **Then** an interactive root shell opens with a TTY allocated.
+7. **Given** a sandbox exists, **When** the user runs `dilxc.sh destroy`, **Then** a confirmation prompt appears, and upon confirmation, the container is deleted.
 
 ---
 
@@ -125,13 +125,13 @@ A developer needs to run Docker containers inside the sandbox — for example, t
 
 **Why this priority**: Docker support is important for realistic project environments but not every project requires it.
 
-**Independent Test**: Can be tested by running `sandbox.sh docker run hello-world` and verifying Docker operates correctly inside the nested container.
+**Independent Test**: Can be tested by running `dilxc.sh docker run hello-world` and verifying Docker operates correctly inside the nested container.
 
 **Acceptance Scenarios**:
 
-1. **Given** a running sandbox with Docker installed, **When** the user runs `sandbox.sh docker ps`, **Then** the Docker command executes inside the container and returns results.
-2. **Given** Docker arguments with spaces or special characters, **When** the user runs `sandbox.sh docker run -e "MY_VAR=hello world" nginx`, **Then** arguments are safely escaped via `printf %q` and passed correctly.
-3. **Given** Docker containers are running inside the sandbox, **When** the user runs `sandbox.sh logs`, **Then** Docker container logs are displayed.
+1. **Given** a running sandbox with Docker installed, **When** the user runs `dilxc.sh docker ps`, **Then** the Docker command executes inside the container and returns results.
+2. **Given** Docker arguments with spaces or special characters, **When** the user runs `dilxc.sh docker run -e "MY_VAR=hello world" nginx`, **Then** arguments are safely escaped via `printf %q` and passed correctly.
+3. **Given** Docker containers are running inside the sandbox, **When** the user runs `dilxc.sh logs`, **Then** Docker container logs are displayed.
 
 ---
 
@@ -145,7 +145,7 @@ A developer works on multiple projects and wants a separate sandbox for each, wi
 
 **Acceptance Scenarios**:
 
-1. **Given** the user sets `CLAUDE_SANDBOX=project-b`, **When** they run any `sandbox.sh` command, **Then** the command operates on the `project-b` container instead of the default.
+1. **Given** the user sets `DILXC_CONTAINER=project-b`, **When** they run any `dilxc.sh` command, **Then** the command operates on the `project-b` container instead of the default.
 2. **Given** two sandboxes exist for different projects, **When** the user takes a snapshot on one, **Then** the other sandbox is unaffected — no shared state.
 
 ---
@@ -156,12 +156,12 @@ A developer wants to verify their sandbox is working correctly — network, Dock
 
 **Why this priority**: Diagnostic capability helps troubleshoot issues but is not needed for normal operation.
 
-**Independent Test**: Can be tested by running `sandbox.sh health-check` on a healthy container and verifying all checks pass, then breaking one component and verifying the check detects it.
+**Independent Test**: Can be tested by running `dilxc.sh health-check` on a healthy container and verifying all checks pass, then breaking one component and verifying the check detects it.
 
 **Acceptance Scenarios**:
 
-1. **Given** a fully functional sandbox, **When** the user runs `sandbox.sh health-check`, **Then** each check (network, Docker, Claude Code, project directory, source mount) reports "ok".
-2. **Given** a sandbox with a broken component, **When** the user runs `sandbox.sh health-check`, **Then** the failed check reports "FAILED" and the command exits with a nonzero status.
+1. **Given** a fully functional sandbox, **When** the user runs `dilxc.sh health-check`, **Then** each check (network, Docker, Claude Code, project directory, source mount) reports "ok".
+2. **Given** a sandbox with a broken component, **When** the user runs `dilxc.sh health-check`, **Then** the failed check reports "FAILED" and the command exits with a nonzero status.
 
 ---
 
@@ -170,9 +170,9 @@ A developer wants to verify their sandbox is working correctly — network, Dock
 - What happens when the host project directory does not exist at setup time? Setup must fail with a clear error before creating the container.
 - What happens when `lxc file push` is used to overwrite an existing file? It silently fails — the file must be deleted first, then pushed.
 - What happens when Docker's iptables rules on the host block LXD bridge traffic? Containers get IPv6 but no IPv4. Requires UFW rules for DHCP/DNS on lxdbr0 and a DOCKER-USER chain entry for the LXD subnet.
-- What happens when the user runs `sandbox.sh` commands against a non-existent container? The `require_container` helper validates the container exists before executing.
+- What happens when the user runs `dilxc.sh` commands against a non-existent container? The `require_container` helper validates the container exists before executing.
 - What happens when the user runs commands requiring a running container on a stopped one? The `require_running` helper validates the container is running.
-- What happens when rsync exclude lists in `sandbox.sh`, bash config, and fish config diverge? Sync behavior becomes inconsistent — all three must be kept in sync manually.
+- What happens when rsync exclude lists in `dilxc.sh`, bash config, and fish config diverge? Sync behavior becomes inconsistent — all three must be kept in sync manually.
 - What happens when a user runs sync after Claude has created new files in the working copy? The `--delete` flag removes container-only files. Users must commit and push to GitHub before syncing to preserve work.
 
 ## Requirements *(mandatory)*
@@ -181,10 +181,10 @@ A developer wants to verify their sandbox is working correctly — network, Dock
 
 - **FR-001**: System MUST create Ubuntu 24.04 LXD containers with `security.nesting=true` to allow Docker to run natively inside.
 - **FR-002**: System MUST mount the user's project directory as read-only at `/home/ubuntu/project-src` inside the container.
-- **FR-003**: System MUST create a writable working copy directory at `/home/ubuntu/project` during provisioning. The directory is populated by the user running `sandbox.sh sync` after setup completes.
+- **FR-003**: System MUST create a writable working copy directory at `/home/ubuntu/project` during provisioning. The directory is populated by the user running `dilxc.sh sync` after setup completes.
 - **FR-004**: System MUST install Docker CE with compose plugin, Node.js 22 LTS, Claude Code (npm global), uv, Spec Kit, and standard dev tools during provisioning.
 - **FR-005**: System MUST configure shell aliases (`cc`, `cc-resume`, `cc-prompt`) that invoke Claude Code with `--dangerously-skip-permissions`.
-- **FR-006**: System MUST provide a `sync-project` function and `sandbox.sh sync` command that rsync with `--delete` from the read-only mount to the writable copy, excluding `node_modules`, `.git`, `dist`, and `build`. Sync is destructive — files existing only in the working copy are removed. The expected workflow for preserving changes is to commit and push to GitHub before syncing.
+- **FR-006**: System MUST provide a `sync-project` function and `dilxc.sh sync` command that rsync with `--delete` from the read-only mount to the writable copy, excluding `node_modules`, `.git`, `dist`, and `build`. Sync is destructive — files existing only in the working copy are removed. The expected workflow for preserving changes is to commit and push to GitHub before syncing.
 - **FR-007**: System MUST take a `clean-baseline` btrfs snapshot after successful provisioning.
 - **FR-008**: System MUST support snapshot creation with user-provided or auto-generated timestamp names.
 - **FR-009**: System MUST support snapshot restoration with automatic container restart.
@@ -193,7 +193,7 @@ A developer wants to verify their sandbox is working correctly — network, Dock
 - **FR-012**: System MUST support browser OAuth as the primary authentication method and API key injection as the alternative.
 - **FR-013**: System MUST validate container existence (`require_container`) and running state (`require_running`) before executing subcommands.
 - **FR-014**: System MUST provide a health check that verifies network connectivity, Docker, Claude Code, project directory, and source mount, reporting each as ok/FAILED.
-- **FR-015**: System MUST support operating on different containers via the `CLAUDE_SANDBOX` environment variable.
+- **FR-015**: System MUST support operating on different containers via the `DILXC_CONTAINER` environment variable.
 - **FR-016**: System MUST optionally install and configure fish shell when the `--fish` flag is passed, writing equivalent aliases, functions, and PATH configuration.
 - **FR-017**: System MUST configure git defaults (main branch, sandbox identity) for the `ubuntu` user inside the container.
 - **FR-018**: System MUST support an optional read-write deploy mount at `/mnt/deploy` with a corresponding `deploy` function.
@@ -206,7 +206,7 @@ A developer wants to verify their sandbox is working correctly — network, Dock
 
 ### Key Entities
 
-- **Container**: An LXD system container running Ubuntu 24.04, bound to a single host project directory. Has a name (default: `claude-sandbox`), network configuration, and zero or more btrfs snapshots.
+- **Container**: An LXD system container running Ubuntu 24.04, bound to a single host project directory. Has a name (default: `docker-lxc`), network configuration, and zero or more btrfs snapshots.
 - **Snapshot**: A btrfs point-in-time capture of a container's state. Has a name (user-provided or timestamp-generated). Supports instant restore with automatic container restart.
 - **Project Mount**: A read-only bind mount from host to `/home/ubuntu/project-src`. The source of truth for project files.
 - **Working Copy**: A writable rsync copy at `/home/ubuntu/project` where Claude Code operates. Refreshed via sync commands.
@@ -234,7 +234,7 @@ A developer wants to verify their sandbox is working correctly — network, Dock
 - The `lxdbr0` bridge subnet is `10.200.12.0/24` (configurable in UFW rules if different).
 - Fish shell is not needed by default — bash is sufficient for most users.
 - Setup failures are handled by deleting and recreating the container, not by partial recovery.
-- Re-provisioning an existing container is an advanced escape hatch (manual `lxc exec` steps documented in CLAUDE.md), not a supported sandbox.sh workflow. The primary recovery paths are snapshot restore or delete-and-recreate.
+- Re-provisioning an existing container is an advanced escape hatch (manual `lxc exec` steps documented in CLAUDE.md), not a supported dilxc.sh workflow. The primary recovery paths are snapshot restore or delete-and-recreate.
 - The rsync exclusion list (`node_modules`, `.git`, `dist`, `build`) covers the common case for Node.js/web projects. Users with different needs would modify the scripts directly.
 
 ## Future Considerations

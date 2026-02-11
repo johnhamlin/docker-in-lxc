@@ -6,7 +6,7 @@ The work described here is **complete**. Keeping it for reference.
 ## What Was Done (2026-02-11)
 
 ### Problem
-The `claude-sandbox` LXD container had no IPv4 connectivity. It got an IPv6 address
+The `docker-lxc` LXD container had no IPv4 connectivity. It got an IPv6 address
 from lxdbr0 but couldn't get a DHCP lease or reach the internet. The container was
 partially provisioned (no software installed).
 

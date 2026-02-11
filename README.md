@@ -1,4 +1,4 @@
-# Claude Code LXD Sandbox
+# Docker-in-LXC
 
 Run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) autonomously inside an LXD system container with full Docker support, btrfs snapshot rollback, and [Spec Kit](https://github.com/github/spec-kit) for spec-driven development.
 
@@ -34,32 +34,32 @@ If Docker also runs on your host, you'll need firewall rules to prevent Docker's
 
 ```bash
 # 1. Clone and make scripts executable
-git clone https://github.com/your-user/claude-lxc-sandbox.git
-cd claude-lxc-sandbox
-chmod +x setup-host.sh provision-container.sh sandbox.sh
+git clone https://github.com/your-user/docker-in-lxc.git
+cd docker-in-lxc
+chmod +x setup-host.sh provision-container.sh dilxc.sh
 
 # 2. Create the sandbox (takes ~5 minutes)
-./setup-host.sh -n claude-sandbox -p /path/to/your/project
+./setup-host.sh -n docker-lxc -p /path/to/your/project
 
 # 3. Authenticate Claude Code (one-time)
-./sandbox.sh login
+./dilxc.sh login
 # Complete the browser OAuth flow, then type /exit
 
 # 4. Start working
-./sandbox.sh sync                              # copy project into sandbox
-./sandbox.sh claude                            # interactive autonomous session
-./sandbox.sh claude-run "fix the failing tests" # or fire-and-forget
+./dilxc.sh sync                              # copy project into sandbox
+./dilxc.sh claude                            # interactive autonomous session
+./dilxc.sh claude-run "fix the failing tests" # or fire-and-forget
 ```
 
 **Using an API key instead?** Export it before setup:
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
-./setup-host.sh -n claude-sandbox -p /path/to/your/project
+./setup-host.sh -n docker-lxc -p /path/to/your/project
 ```
 
 ## Day-to-Day Usage
 
-### sandbox.sh Commands
+### dilxc.sh Commands
 
 ```
 shell                  Open a shell in the container
@@ -88,18 +88,18 @@ destroy                Delete the container (with confirmation)
 ### Typical Session
 
 ```bash
-./sandbox.sh start                     # if stopped
-./sandbox.sh snapshot before-session   # safety net
-./sandbox.sh sync                      # pull in latest source
-./sandbox.sh claude                    # let Claude loose
+./dilxc.sh start                     # if stopped
+./dilxc.sh snapshot before-session   # safety net
+./dilxc.sh sync                      # pull in latest source
+./dilxc.sh claude                    # let Claude loose
 ```
 
 ### One-Shot Prompts
 
 ```bash
-./sandbox.sh claude-run "refactor the auth module to use JWT"
-./sandbox.sh claude-run "write integration tests for the API endpoints"
-./sandbox.sh claude-run "find and fix the memory leak in the worker process"
+./dilxc.sh claude-run "refactor the auth module to use JWT"
+./dilxc.sh claude-run "write integration tests for the API endpoints"
+./dilxc.sh claude-run "find and fix the memory leak in the worker process"
 ```
 
 ### Resuming Sessions
@@ -107,7 +107,7 @@ destroy                Delete the container (with confirmation)
 If a session gets interrupted or you want to continue where Claude left off:
 
 ```bash
-./sandbox.sh claude-resume
+./dilxc.sh claude-resume
 ```
 
 ### Snapshots
@@ -115,24 +115,24 @@ If a session gets interrupted or you want to continue where Claude left off:
 Take a snapshot before every session. They're instant and free (btrfs copy-on-write).
 
 ```bash
-./sandbox.sh snapshot before-refactor   # save state
-./sandbox.sh snapshots                  # list all
+./dilxc.sh snapshot before-refactor   # save state
+./dilxc.sh snapshots                  # list all
 
 # If Claude goes off the rails:
-./sandbox.sh restore before-refactor    # instant rollback
+./dilxc.sh restore before-refactor    # instant rollback
 
 # Factory reset:
-./sandbox.sh restore clean-baseline
+./dilxc.sh restore clean-baseline
 ```
 
 ### Getting Files Out
 
 ```bash
 # Pull to host
-./sandbox.sh pull /home/ubuntu/project/dist/ ./output/
+./dilxc.sh pull /home/ubuntu/project/dist/ ./output/
 
 # Git push from inside
-./sandbox.sh shell
+./dilxc.sh shell
 cd ~/project && git push origin feature-branch
 
 # Deploy mount (if set up with -d flag)
@@ -150,8 +150,8 @@ docker compose up -d
 docker compose exec postgres psql -U myuser -d mydb
 
 # From the host
-./sandbox.sh docker compose ps
-./sandbox.sh docker compose logs -f
+./dilxc.sh docker compose ps
+./dilxc.sh docker compose logs -f
 ```
 
 ### Multiple Sandboxes
@@ -160,8 +160,8 @@ docker compose exec postgres psql -U myuser -d mydb
 ./setup-host.sh -n project-alpha -p ~/projects/alpha
 ./setup-host.sh -n project-beta -p ~/projects/beta
 
-CLAUDE_SANDBOX=project-alpha ./sandbox.sh claude
-CLAUDE_SANDBOX=project-beta ./sandbox.sh claude-run "add pagination"
+DILXC_CONTAINER=project-alpha ./dilxc.sh claude
+DILXC_CONTAINER=project-beta ./dilxc.sh claude-run "add pagination"
 ```
 
 ## Spec Kit Integration
@@ -169,14 +169,14 @@ CLAUDE_SANDBOX=project-beta ./sandbox.sh claude-run "add pagination"
 The container comes with [Spec Kit](https://github.com/github/spec-kit) pre-installed for spec-driven development. If your project has a `.specify/` directory, sync it into the sandbox and use it in prompts:
 
 ```bash
-./sandbox.sh sync
-./sandbox.sh claude-run "implement the feature described in specs/auth-redesign.md"
+./dilxc.sh sync
+./dilxc.sh claude-run "implement the feature described in specs/auth-redesign.md"
 ```
 
 Or use `specify` directly inside the container:
 
 ```bash
-./sandbox.sh shell
+./dilxc.sh shell
 cd ~/project
 specify run
 ```
@@ -184,10 +184,10 @@ specify run
 ## How It Works
 
 ```
-claude-lxc-sandbox/
+docker-in-lxc/
 ├── setup-host.sh           # One-time setup (runs on host)
 ├── provision-container.sh  # Container provisioning (runs inside container)
-├── sandbox.sh              # Day-to-day management (runs on host)
+├── dilxc.sh                # Day-to-day management (runs on host)
 ├── CLAUDE.md               # Machine-readable project docs for Claude Code
 └── README.md
 ```
@@ -196,7 +196,7 @@ claude-lxc-sandbox/
 
 **provision-container.sh** installs Docker CE, Node.js 22, Claude Code, uv, Spec Kit, and dev tools. It configures fish shell with aliases and helpers in both bash and fish configs.
 
-**sandbox.sh** is your daily driver. It wraps `lxc` commands into a simple interface with proper TTY handling for interactive sessions and safe shell escaping for arguments.
+**dilxc.sh** is your daily driver. It wraps `lxc` commands into a simple interface with proper TTY handling for interactive sessions and safe shell escaping for arguments.
 
 ### File Strategy
 
@@ -206,7 +206,7 @@ claude-lxc-sandbox/
 | `/home/ubuntu/project` | Read-write | Working copy where Claude edits |
 | `/mnt/deploy` | Read-write | Optional output directory mapped to host |
 
-Claude can't accidentally corrupt your host source. Sync changes in with `./sandbox.sh sync` and extract results with `git push`, `./sandbox.sh pull`, or the deploy mount.
+Claude can't accidentally corrupt your host source. Sync changes in with `./dilxc.sh sync` and extract results with `git push`, `./dilxc.sh pull`, or the deploy mount.
 
 ## Host Firewall Setup
 
@@ -256,7 +256,7 @@ sudo ufw reload
 ```bash
 sudo iptables -L ufw-before-input -v -n | grep lxdbr0
 sudo iptables -L DOCKER-USER -v -n | grep 10.200
-lxc exec claude-sandbox -- ping -c 1 8.8.8.8
+lxc exec docker-lxc -- ping -c 1 8.8.8.8
 ```
 
 ## Troubleshooting
@@ -265,23 +265,23 @@ lxc exec claude-sandbox -- ping -c 1 8.8.8.8
 
 This is the firewall issue. Apply the [Host Firewall Setup](#host-firewall-setup) fix, then:
 ```bash
-lxc exec claude-sandbox -- networkctl reconfigure eth0
+lxc exec docker-lxc -- networkctl reconfigure eth0
 ```
 
 ### Docker won't start inside the container
 
 ```bash
-lxc config get claude-sandbox security.nesting   # must be "true"
-lxc exec claude-sandbox -- systemctl status docker
+lxc config get docker-lxc security.nesting   # must be "true"
+lxc exec docker-lxc -- systemctl status docker
 ```
 
 ### Claude Code can't authenticate
 
-**Pro/Max subscribers** — run `./sandbox.sh login` and complete the browser OAuth flow.
+**Pro/Max subscribers** — run `./dilxc.sh login` and complete the browser OAuth flow.
 
 **API key users** — verify the key is set:
 ```bash
-./sandbox.sh shell
+./dilxc.sh shell
 echo $ANTHROPIC_API_KEY
 ```
 
@@ -289,17 +289,17 @@ echo $ANTHROPIC_API_KEY
 
 Don't try to resume. Delete and recreate:
 ```bash
-lxc delete claude-sandbox --force
-./setup-host.sh -n claude-sandbox -p /path/to/your/project
+lxc delete docker-lxc --force
+./setup-host.sh -n docker-lxc -p /path/to/your/project
 ```
 
 ### Re-provisioning an existing container
 
 ```bash
-lxc exec claude-sandbox -- rm -f /tmp/provision-container.sh
-lxc file push provision-container.sh claude-sandbox/tmp/provision-container.sh
-lxc exec claude-sandbox -- chmod +x /tmp/provision-container.sh
-lxc exec claude-sandbox -- /tmp/provision-container.sh
+lxc exec docker-lxc -- rm -f /tmp/provision-container.sh
+lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
+lxc exec docker-lxc -- chmod +x /tmp/provision-container.sh
+lxc exec docker-lxc -- /tmp/provision-container.sh
 ```
 
 Note: `lxc file push` won't overwrite an existing file — you must delete it first.
@@ -307,8 +307,8 @@ Note: `lxc file push` won't overwrite an existing file — you must delete it fi
 ### Ran out of disk space
 
 ```bash
-lxc exec claude-sandbox -- df -h /
-lxc config device set claude-sandbox root size=50GB
+lxc exec docker-lxc -- df -h /
+lxc config device set docker-lxc root size=50GB
 ```
 
 ## Security Notes
@@ -319,8 +319,8 @@ lxc config device set claude-sandbox root size=50GB
 - **Read-only source mount** prevents Claude from modifying your host project. All edits happen on the working copy.
 - **Resource limits** are available:
   ```bash
-  lxc config set claude-sandbox limits.memory 8GB
-  lxc config set claude-sandbox limits.cpu 4
+  lxc config set docker-lxc limits.memory 8GB
+  lxc config set docker-lxc limits.cpu 4
   ```
 
 ## Alternatives

@@ -1,4 +1,4 @@
-# Specification Quality Checklist: LXD Sandbox for Autonomous Claude Code
+# Specification Quality Checklist: Docker-in-LXC
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-02-11
@@ -33,5 +33,5 @@
 
 - This is a baseline spec documenting already-built functionality. All requirements are derived from the existing, working implementation.
 - No [NEEDS CLARIFICATION] markers were needed — the feature description was comprehensive and complete.
-- The spec references specific CLI commands and paths (e.g., `sandbox.sh claude`, `/home/ubuntu/project`) because these are user-facing interface contracts, not implementation details. They describe WHAT the user interacts with, not HOW the system implements it internally.
+- The spec references specific CLI commands and paths (e.g., `dilxc.sh claude`, `/home/ubuntu/project`) because these are user-facing interface contracts, not implementation details. They describe WHAT the user interacts with, not HOW the system implements it internally.
 - All items pass validation. Spec is ready for `/speckit.clarify` or `/speckit.plan`.

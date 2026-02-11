@@ -1,4 +1,4 @@
-# Tasks: LXD Sandbox for Autonomous Claude Code
+# Tasks: Docker-in-LXC
 
 **Input**: Design documents from `/specs/001-baseline-spec/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
@@ -21,10 +21,10 @@
 
 **Purpose**: Verify project structure matches plan.md and all scripts exist
 
-- [x] T001 Validate project structure matches plan.md layout — verify `setup-host.sh`, `provision-container.sh`, `sandbox.sh`, `CLAUDE.md`, and `.gitignore` exist at repository root
+- [x] T001 Validate project structure matches plan.md layout — verify `setup-host.sh`, `provision-container.sh`, `dilxc.sh`, `CLAUDE.md`, and `.gitignore` exist at repository root
 - [x] T002 [P] Verify `setup-host.sh` uses `set -euo pipefail` and `#!/bin/bash` per contracts/setup-host.md
 - [x] T003 [P] Verify `provision-container.sh` uses `set -euo pipefail` and `#!/bin/bash` per contracts/provision.md
-- [x] T004 [P] Verify `sandbox.sh` uses `#!/bin/bash` and per-command error handling (no `set -e`) per contracts/sandbox.md
+- [x] T004 [P] Verify `dilxc.sh` uses `#!/bin/bash` and per-command error handling (no `set -e`) per contracts/sandbox.md
 
 ---
 
@@ -34,10 +34,10 @@
 
 **CRITICAL**: These checks underpin every user story — failures here indicate systemic issues
 
-- [x] T005 [P] Validate rsync exclude list parity (Constitution XI) — confirm `node_modules`, `.git`, `dist`, `build` are excluded identically in `sandbox.sh` `cmd_sync`, bash `sync-project` function, and fish `sync-project` function within `provision-container.sh`
-- [x] T006 [P] Validate argument escaping (Constitution XII) — verify `printf '%q'` usage in `sandbox.sh` for `cmd_claude_run`, `cmd_exec`, and `cmd_docker` subcommands
-- [x] T007 [P] Validate TTY allocation — verify `-t` flag on `lxc exec` for interactive commands (`shell`, `root`, `login`, `claude`, `claude-resume`) in `sandbox.sh`
-- [x] T008 [P] Validate precondition helpers — verify `require_container` and `require_running` functions exist in `sandbox.sh` and are called before relevant subcommands per contracts/sandbox.md
+- [x] T005 [P] Validate rsync exclude list parity (Constitution XI) — confirm `node_modules`, `.git`, `dist`, `build` are excluded identically in `dilxc.sh` `cmd_sync`, bash `sync-project` function, and fish `sync-project` function within `provision-container.sh`
+- [x] T006 [P] Validate argument escaping (Constitution XII) — verify `printf '%q'` usage in `dilxc.sh` for `cmd_claude_run`, `cmd_exec`, and `cmd_docker` subcommands
+- [x] T007 [P] Validate TTY allocation — verify `-t` flag on `lxc exec` for interactive commands (`shell`, `root`, `login`, `claude`, `claude-resume`) in `dilxc.sh`
+- [x] T008 [P] Validate precondition helpers — verify `require_container` and `require_running` functions exist in `dilxc.sh` and are called before relevant subcommands per contracts/sandbox.md
 - [x] T009 [P] Validate verbose output (FR-023) — confirm all three scripts produce step-by-step progress to stdout and errors to stderr
 - [x] T010 Validate shell parity (Constitution IX) — verify bash config block and fish config block in `provision-container.sh` define identical aliases/abbreviations, functions, and PATH entries per contracts/provision.md
 
@@ -73,16 +73,16 @@
 
 ## Phase 4: User Story 2 — Run Claude Code Autonomously (Priority: P1)
 
-**Goal**: Verify `sandbox.sh` Claude commands launch Claude Code with correct flags in the correct directory
+**Goal**: Verify `dilxc.sh` Claude commands launch Claude Code with correct flags in the correct directory
 
 **Independent Test**: Start an interactive Claude session and a one-shot prompt, verify both operate in `/home/ubuntu/project` with `--dangerously-skip-permissions`
 
 ### Validation for User Story 2
 
-- [x] T024 [US2] Validate `cmd_claude` in `sandbox.sh` — verify interactive Claude Code starts in `/home/ubuntu/project` with `--dangerously-skip-permissions` and TTY (FR-005, FR-010, Acceptance 2.1)
-- [x] T025 [US2] Validate `cmd_claude_run` in `sandbox.sh` — verify one-shot prompt execution with `printf %q` escaping in project directory (FR-011, Acceptance 2.2)
-- [x] T026 [US2] Validate `cmd_claude_resume` in `sandbox.sh` — verify session resume with `--resume` flag and TTY (Acceptance 2.3)
-- [x] T027 [US2] Acceptance test: Run `sandbox.sh claude-run "fix the tests in src/api/ and run 'npm test' -- --grep \"auth module\""` and verify it executes non-interactively with correct working directory and the prompt passes through with quotes and spaces intact (Acceptance 2.2, SC-007) — **verified via exec**: printf %q escaping preserves all special chars through lxc exec chain
+- [x] T024 [US2] Validate `cmd_claude` in `dilxc.sh` — verify interactive Claude Code starts in `/home/ubuntu/project` with `--dangerously-skip-permissions` and TTY (FR-005, FR-010, Acceptance 2.1)
+- [x] T025 [US2] Validate `cmd_claude_run` in `dilxc.sh` — verify one-shot prompt execution with `printf %q` escaping in project directory (FR-011, Acceptance 2.2)
+- [x] T026 [US2] Validate `cmd_claude_resume` in `dilxc.sh` — verify session resume with `--resume` flag and TTY (Acceptance 2.3)
+- [x] T027 [US2] Acceptance test: Run `dilxc.sh claude-run "fix the tests in src/api/ and run 'npm test' -- --grep \"auth module\""` and verify it executes non-interactively with correct working directory and the prompt passes through with quotes and spaces intact (Acceptance 2.2, SC-007) — **verified via exec**: printf %q escaping preserves all special chars through lxc exec chain
 
 **Checkpoint**: User Story 2 validated — Claude Code runs autonomously as specified
 
@@ -92,11 +92,11 @@
 
 **Goal**: Verify authentication pathways (browser OAuth and API key injection)
 
-**Independent Test**: Run `sandbox.sh login` and verify Claude Code can start a session afterward
+**Independent Test**: Run `dilxc.sh login` and verify Claude Code can start a session afterward
 
 ### Validation for User Story 3
 
-- [x] T028 [US3] Validate `cmd_login` in `sandbox.sh` — verify interactive Claude Code session with TTY for browser OAuth flow (FR-012, Acceptance 3.1)
+- [x] T028 [US3] Validate `cmd_login` in `dilxc.sh` — verify interactive Claude Code session with TTY for browser OAuth flow (FR-012, Acceptance 3.1)
 - [x] T029 [US3] Validate API key injection in `setup-host.sh` — verify `ANTHROPIC_API_KEY` env var is written into container shell config when set (FR-012, Acceptance 3.2)
 - [x] T030 [P] [US3] Validate API key written to bash config in `provision-container.sh` — verify export statement appended to `.bashrc` when API key is passed
 - [x] T031 [P] [US3] Validate API key written to fish config in `provision-container.sh` — verify `set -gx` in fish config when API key is passed and `--fish` is used
@@ -113,10 +113,10 @@
 
 ### Validation for User Story 4
 
-- [x] T032 [US4] Validate `cmd_snapshot` in `sandbox.sh` — verify named snapshot creation via `lxc snapshot` (FR-008, Acceptance 4.1)
-- [x] T033 [US4] Validate auto-generated snapshot name in `sandbox.sh` — verify `snap-YYYYMMDD-HHMMSS` format when no name provided (FR-008, Acceptance 4.2)
-- [x] T034 [US4] Validate `cmd_restore` in `sandbox.sh` — verify snapshot restoration with automatic container restart (FR-009, Acceptance 4.3)
-- [x] T035 [P] [US4] Validate `cmd_snapshots` in `sandbox.sh` — verify snapshot listing output (Acceptance 4.4)
+- [x] T032 [US4] Validate `cmd_snapshot` in `dilxc.sh` — verify named snapshot creation via `lxc snapshot` (FR-008, Acceptance 4.1)
+- [x] T033 [US4] Validate auto-generated snapshot name in `dilxc.sh` — verify `snap-YYYYMMDD-HHMMSS` format when no name provided (FR-008, Acceptance 4.2)
+- [x] T034 [US4] Validate `cmd_restore` in `dilxc.sh` — verify snapshot restoration with automatic container restart (FR-009, Acceptance 4.3)
+- [x] T035 [P] [US4] Validate `cmd_snapshots` in `dilxc.sh` — verify snapshot listing output (Acceptance 4.4)
 - [x] T036 [US4] Validate restore error handling — verify missing snapshot name shows available snapshots (per contracts/sandbox.md)
 - [x] T037 [US4] Acceptance test: Take snapshot, create a file in container, restore, verify file is gone and container is running (SC-003)
 
@@ -132,12 +132,12 @@
 
 ### Validation for User Story 5
 
-- [x] T038 [US5] Validate `cmd_sync` in `sandbox.sh` — verify rsync with `--delete` from `project-src/` to `project/` with 4 excludes (FR-006, Acceptance 5.1)
-- [x] T039 [P] [US5] Validate `cmd_pull` in `sandbox.sh` — verify `lxc file pull -r` from container to host with default dest `.` (FR-021, Acceptance 5.2)
-- [x] T040 [P] [US5] Validate `cmd_push` in `sandbox.sh` — verify `lxc file push` from host to container with default dest `/home/ubuntu/project/` (FR-021, Acceptance 5.3)
+- [x] T038 [US5] Validate `cmd_sync` in `dilxc.sh` — verify rsync with `--delete` from `project-src/` to `project/` with 4 excludes (FR-006, Acceptance 5.1)
+- [x] T039 [P] [US5] Validate `cmd_pull` in `dilxc.sh` — verify `lxc file pull -r` from container to host with default dest `.` (FR-021, Acceptance 5.2)
+- [x] T040 [P] [US5] Validate `cmd_push` in `dilxc.sh` — verify `lxc file push` from host to container with default dest `/home/ubuntu/project/` (FR-021, Acceptance 5.3)
 - [x] T041 [US5] Validate bash `sync-project` function in `provision-container.sh` — verify same rsync command and excludes as `cmd_sync` (FR-006, Acceptance 5.4)
 - [x] T042 [US5] Validate bash `deploy` function in `provision-container.sh` — verify rsync to `/mnt/deploy` with mount check (FR-018, Acceptance 5.5)
-- [x] T043 [US5] Acceptance test: Add a file on host, run `sandbox.sh sync`, verify file appears in `/home/ubuntu/project` and `node_modules`/`.git` are excluded (SC-004)
+- [x] T043 [US5] Acceptance test: Add a file on host, run `dilxc.sh sync`, verify file appears in `/home/ubuntu/project` and `node_modules`/`.git` are excluded (SC-004)
 
 **Checkpoint**: User Story 5 validated — sync and file transfer work as specified
 
@@ -151,14 +151,14 @@
 
 ### Validation for User Story 6
 
-- [x] T044 [P] [US6] Validate `cmd_start` in `sandbox.sh` — verify `lxc start` with `require_container` precondition (Acceptance 6.1)
-- [x] T045 [P] [US6] Validate `cmd_stop` in `sandbox.sh` — verify `lxc stop` with `require_running` precondition (Acceptance 6.2)
-- [x] T046 [P] [US6] Validate `cmd_restart` in `sandbox.sh` — verify `lxc restart` with `require_running` precondition (Acceptance 6.3)
-- [x] T047 [P] [US6] Validate `cmd_status` in `sandbox.sh` — verify container info, IP address, and snapshot listing (Acceptance 6.4)
-- [x] T048 [P] [US6] Validate `cmd_shell` in `sandbox.sh` — verify bash shell as `ubuntu` user with TTY via `su - ubuntu` (FR-010, Acceptance 6.5)
-- [x] T049 [P] [US6] Validate `cmd_root` in `sandbox.sh` — verify root shell with TTY (Acceptance 6.6)
-- [x] T050 [US6] Validate `cmd_destroy` in `sandbox.sh` — verify confirmation prompt before `lxc delete` (FR-020, Acceptance 6.7)
-- [x] T051 [US6] Validate `cmd_exec` in `sandbox.sh` — verify command execution in `/home/ubuntu/project` with `printf %q` escaping (FR-011)
+- [x] T044 [P] [US6] Validate `cmd_start` in `dilxc.sh` — verify `lxc start` with `require_container` precondition (Acceptance 6.1)
+- [x] T045 [P] [US6] Validate `cmd_stop` in `dilxc.sh` — verify `lxc stop` with `require_running` precondition (Acceptance 6.2)
+- [x] T046 [P] [US6] Validate `cmd_restart` in `dilxc.sh` — verify `lxc restart` with `require_running` precondition (Acceptance 6.3)
+- [x] T047 [P] [US6] Validate `cmd_status` in `dilxc.sh` — verify container info, IP address, and snapshot listing (Acceptance 6.4)
+- [x] T048 [P] [US6] Validate `cmd_shell` in `dilxc.sh` — verify bash shell as `ubuntu` user with TTY via `su - ubuntu` (FR-010, Acceptance 6.5)
+- [x] T049 [P] [US6] Validate `cmd_root` in `dilxc.sh` — verify root shell with TTY (Acceptance 6.6)
+- [x] T050 [US6] Validate `cmd_destroy` in `dilxc.sh` — verify confirmation prompt before `lxc delete` (FR-020, Acceptance 6.7)
+- [x] T051 [US6] Validate `cmd_exec` in `dilxc.sh` — verify command execution in `/home/ubuntu/project` with `printf %q` escaping (FR-011)
 
 **Checkpoint**: User Story 6 validated — lifecycle management works as specified
 
@@ -168,14 +168,14 @@
 
 **Goal**: Verify Docker passthrough and log commands
 
-**Independent Test**: Run `sandbox.sh docker run hello-world` and verify Docker operates correctly
+**Independent Test**: Run `dilxc.sh docker run hello-world` and verify Docker operates correctly
 
 ### Validation for User Story 7
 
-- [x] T052 [US7] Validate `cmd_docker` in `sandbox.sh` — verify Docker command passthrough with `printf %q` escaping (FR-011, Acceptance 7.1, 7.2)
-- [x] T053 [US7] Validate `cmd_logs` in `sandbox.sh` — verify Docker container log display (Acceptance 7.3)
+- [x] T052 [US7] Validate `cmd_docker` in `dilxc.sh` — verify Docker command passthrough with `printf %q` escaping (FR-011, Acceptance 7.1, 7.2)
+- [x] T053 [US7] Validate `cmd_logs` in `dilxc.sh` — verify Docker container log display (Acceptance 7.3)
 - [x] T054 [US7] Validate nesting configuration — verify `security.nesting=true` in `setup-host.sh` enables Docker inside container (FR-001)
-- [x] T055 [US7] Acceptance test: Run `sandbox.sh docker run hello-world` and verify successful output (SC-002 prerequisite)
+- [x] T055 [US7] Acceptance test: Run `dilxc.sh docker run hello-world` and verify successful output (SC-002 prerequisite)
 
 **Checkpoint**: User Story 7 validated — Docker works inside the sandbox as specified
 
@@ -183,15 +183,15 @@
 
 ## Phase 10: User Story 8 — Multiple Sandboxes (Priority: P3)
 
-**Goal**: Verify `CLAUDE_SANDBOX` env var enables independent container targeting
+**Goal**: Verify `DILXC_CONTAINER` env var enables independent container targeting
 
 **Independent Test**: Create two sandboxes with different projects, verify each operates independently
 
 ### Validation for User Story 8
 
-- [x] T056 [US8] Validate `CLAUDE_SANDBOX` env var in `sandbox.sh` — verify container name defaults to `claude-sandbox` and is overridable (FR-015, Acceptance 8.1)
-- [x] T057 [US8] Validate `CLAUDE_SANDBOX` in `setup-host.sh` — verify `-n` flag and env var fallback per contracts/setup-host.md
-- [x] T058 [US8] Acceptance test: Set `CLAUDE_SANDBOX=test-b`, run `sandbox.sh status`, verify it targets `test-b` container (Acceptance 8.1, SC-006)
+- [x] T056 [US8] Validate `DILXC_CONTAINER` env var in `dilxc.sh` — verify container name defaults to `docker-lxc` and is overridable (FR-015, Acceptance 8.1)
+- [x] T057 [US8] Validate `DILXC_CONTAINER` in `setup-host.sh` — verify `-n` flag and env var fallback per contracts/setup-host.md
+- [x] T058 [US8] Acceptance test: Set `DILXC_CONTAINER=test-b`, run `dilxc.sh status`, verify it targets `test-b` container (Acceptance 8.1, SC-006)
 
 **Checkpoint**: User Story 8 validated — multiple sandboxes work independently
 
@@ -201,14 +201,14 @@
 
 **Goal**: Verify health-check reports pass/fail for all five components
 
-**Independent Test**: Run `sandbox.sh health-check` on healthy container; all checks pass
+**Independent Test**: Run `dilxc.sh health-check` on healthy container; all checks pass
 
 ### Validation for User Story 9
 
-- [x] T059 [US9] Validate `cmd_health_check` in `sandbox.sh` — verify checks for network, Docker, Claude Code, project directory, and source mount (FR-014, Acceptance 9.1)
+- [x] T059 [US9] Validate `cmd_health_check` in `dilxc.sh` — verify checks for network, Docker, Claude Code, project directory, and source mount (FR-014, Acceptance 9.1)
 - [x] T060 [US9] Validate health-check exit code — verify nonzero exit on any component failure (Acceptance 9.2)
 - [x] T061 [US9] Validate health-check output format — verify each component reports `ok` or `FAILED` per contracts/sandbox.md — **FIXED**: changed "missing"/"not mounted" to "FAILED", added `ok=false` for source mount
-- [x] T062 [US9] Acceptance test: Run `sandbox.sh health-check` on a working container and verify all five checks pass (SC-005)
+- [x] T062 [US9] Acceptance test: Run `dilxc.sh health-check` on a working container and verify all five checks pass (SC-005)
 
 **Checkpoint**: User Story 9 validated — health check works as specified
 
@@ -221,7 +221,7 @@
 - [x] T063 [P] Validate edge case: missing project directory at setup time — verify `setup-host.sh` fails with clear error before creating container — **FIXED**: added early validation of required `-p` flag before container creation
 - [x] T064 [P] Validate edge case: commands on non-existent container — verify `require_container` produces "container not found" with create instructions
 - [x] T065 [P] Validate edge case: commands on stopped container — verify `require_running` produces "container is STOPPED" with start instructions
-- [x] T066 Validate `sandbox.sh` case-based dispatch — verify all subcommands from contracts/sandbox.md are routed and `help` is the default
+- [x] T066 Validate `dilxc.sh` case-based dispatch — verify all subcommands from contracts/sandbox.md are routed and `help` is the default
 - [x] T067 Validate CLAUDE.md accuracy — verify Known Issues, Key Commands, and Editing Notes match the current implementation
 - [x] T068 Run quickstart.md validation — walk through quickstart.md end-to-end and verify each command works as documented (auth commands skipped — require browser OAuth)
 
@@ -241,14 +241,14 @@
 ### User Story Dependencies
 
 - **US1 (P1)**: Independent — `setup-host.sh` + `provision-container.sh` audit
-- **US2 (P1)**: Independent — `sandbox.sh` claude commands audit
+- **US2 (P1)**: Independent — `dilxc.sh` claude commands audit
 - **US3 (P1)**: Partially depends on US1 (API key path involves `setup-host.sh`)
-- **US4 (P2)**: Independent — `sandbox.sh` snapshot commands audit
-- **US5 (P2)**: Independent — `sandbox.sh` sync/pull/push + `provision-container.sh` functions
-- **US6 (P2)**: Independent — `sandbox.sh` lifecycle commands audit
+- **US4 (P2)**: Independent — `dilxc.sh` snapshot commands audit
+- **US5 (P2)**: Independent — `dilxc.sh` sync/pull/push + `provision-container.sh` functions
+- **US6 (P2)**: Independent — `dilxc.sh` lifecycle commands audit
 - **US7 (P3)**: Depends on US1 (nesting config in `setup-host.sh`)
 - **US8 (P3)**: Independent — env var handling across both host scripts
-- **US9 (P3)**: Independent — `sandbox.sh` health-check audit
+- **US9 (P3)**: Independent — `dilxc.sh` health-check audit
 
 ### Parallel Opportunities
 
@@ -281,12 +281,12 @@ Task: "Validate idempotent GPG key in provision-container.sh" # T022
 
 ```bash
 # Launch all independent lifecycle validations together:
-Task: "Validate cmd_start in sandbox.sh"    # T044
-Task: "Validate cmd_stop in sandbox.sh"     # T045
-Task: "Validate cmd_restart in sandbox.sh"  # T046
-Task: "Validate cmd_status in sandbox.sh"   # T047
-Task: "Validate cmd_shell in sandbox.sh"    # T048
-Task: "Validate cmd_root in sandbox.sh"     # T049
+Task: "Validate cmd_start in dilxc.sh"    # T044
+Task: "Validate cmd_stop in dilxc.sh"     # T045
+Task: "Validate cmd_restart in dilxc.sh"  # T046
+Task: "Validate cmd_status in dilxc.sh"   # T047
+Task: "Validate cmd_shell in dilxc.sh"    # T048
+Task: "Validate cmd_root in dilxc.sh"     # T049
 ```
 
 ---
@@ -317,8 +317,8 @@ With multiple reviewers:
 1. All complete Phase 1 + Phase 2 together
 2. Once Foundational is done:
    - Reviewer A: US1 + US3 (setup-host.sh + provision-container.sh focus)
-   - Reviewer B: US2 + US4 + US5 (sandbox.sh core commands)
-   - Reviewer C: US6 + US7 + US8 + US9 (sandbox.sh remaining commands)
+   - Reviewer B: US2 + US4 + US5 (dilxc.sh core commands)
+   - Reviewer C: US6 + US7 + US8 + US9 (dilxc.sh remaining commands)
 3. Phase 12: Polish done collaboratively
 
 ---

@@ -1,4 +1,4 @@
-# Data Model: LXD Sandbox for Autonomous Claude Code
+# Data Model: Docker-in-LXC
 
 **Branch**: `001-baseline-spec` | **Date**: 2026-02-11
 
@@ -10,7 +10,7 @@ The primary entity. An LXD system container bound to a single host project.
 
 | Field | Type | Source | Notes |
 |-------|------|--------|-------|
-| name | string | `$CLAUDE_SANDBOX` or `-n` flag | Default: `claude-sandbox` |
+| name | string | `$DILXC_CONTAINER` or `-n` flag | Default: `docker-lxc` |
 | image | string | hardcoded | `ubuntu:24.04` |
 | status | enum | `lxc info` | `RUNNING`, `STOPPED`, `FROZEN` |
 | nesting | bool | config | Always `true` (Docker support) |
@@ -22,7 +22,7 @@ The primary entity. An LXD system container bound to a single host project.
 **Validation rules**:
 - Name must be a valid LXD container name (alphanumeric + hyphens)
 - Project mount source path must exist on host before setup
-- Container must exist before any `sandbox.sh` operation (`require_container`)
+- Container must exist before any `dilxc.sh` operation (`require_container`)
 - Container must be RUNNING for most operations (`require_running`)
 
 **State transitions**:
@@ -93,8 +93,8 @@ Not an LXD entity — a filesystem directory managed by rsync.
 
 **Validation rules**:
 - Directory created during provisioning (`mkdir -p`)
-- Content populated post-setup by user running `sandbox.sh sync` (not during provisioning)
-- Exclude lists must match across bash config, fish config, and `sandbox.sh sync`
+- Content populated post-setup by user running `dilxc.sh sync` (not during provisioning)
+- Exclude lists must match across bash config, fish config, and `dilxc.sh sync`
 
 ## Relationships
 

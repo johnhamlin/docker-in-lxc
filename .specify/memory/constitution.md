@@ -32,7 +32,7 @@
 
   Follow-up TODOs: None
 -->
-# Claude LXC Sandbox Constitution
+# Docker-in-LXC Constitution
 
 ## Core Principles
 
@@ -50,7 +50,7 @@ Each script runs in exactly one place:
 - `setup-host.sh` — runs on the host, creates and provisions the container
 - `provision-container.sh` — runs inside the container, installs tools and
   configures the user environment
-- `sandbox.sh` — runs on the host, wraps `lxc` commands for day-to-day use
+- `dilxc.sh` — runs on the host, wraps `lxc` commands for day-to-day use
 
 When adding functionality, it MUST go into the appropriate existing script.
 New scripts MUST NOT be created unless there is a genuinely new execution
@@ -74,7 +74,7 @@ itself is disposable. If something goes wrong, restore a snapshot.
 
 The host is a shared machine running other services — Docker stacks, other
 LXD containers, production workloads. Every `lxc` command MUST be scoped
-to `$CLAUDE_SANDBOX`. Scripts MUST NOT operate on other containers, modify
+to `$DILXC_CONTAINER`. Scripts MUST NOT operate on other containers, modify
 host-level config, or assume the sandbox is the only thing running. Each
 container is independent: one project mount, its own snapshots, no
 cross-container state.
@@ -115,14 +115,14 @@ equivalent and updated if one exists.
 
 `setup-host.sh` and `provision-container.sh` use `set -euo pipefail`. If
 setup fails partway, the recovery path is deleting the container and
-starting over, not trying to resume. `sandbox.sh` does NOT use `set -e`
+starting over, not trying to resume. `dilxc.sh` does NOT use `set -e`
 because it needs to handle failures gracefully in individual commands.
 
 ### XI. Rsync Excludes Stay Synchronized
 
 The rsync exclude list (`node_modules`, `.git`, `dist`, `build`) appears
 in three places: the bash `sync-project` function, the fish `sync-project`
-function, and the `sandbox.sh sync` command. These three lists MUST always
+function, and the `dilxc.sh sync` command. These three lists MUST always
 match. Any change to one MUST be propagated to the other two.
 
 ### XII. Keep Arguments Safe
@@ -137,7 +137,7 @@ special characters.
 The project follows a strict three-script architecture with clear
 boundaries:
 
-- **Host scripts** (`setup-host.sh`, `sandbox.sh`): Interact with LXD via
+- **Host scripts** (`setup-host.sh`, `dilxc.sh`): Interact with LXD via
   the `lxc` CLI. MUST NOT assume anything about the container's internal
   state beyond what `lxc` reports.
 - **Container script** (`provision-container.sh`): Runs inside the
@@ -146,8 +146,8 @@ boundaries:
   - `/home/ubuntu/project-src` — Host project mounted read-only
   - `/home/ubuntu/project` — Writable working copy (Claude works here)
   - `/mnt/deploy` — Optional read-write mount for deploying output to host
-- **Container name**: Comes from `CLAUDE_SANDBOX` env var (default:
-  `claude-sandbox`). Multiple containers are supported by changing this
+- **Container name**: Comes from `DILXC_CONTAINER` env var (default:
+  `docker-lxc`). Multiple containers are supported by changing this
   variable.
 - **Snapshots**: btrfs snapshots via `lxc snapshot` provide instant
   rollback. A `clean-baseline` snapshot is taken at the end of initial
@@ -163,18 +163,18 @@ When editing the scripts, follow these conventions:
   written when `--fish` is passed. When changing aliases or helper
   functions, update both shell configs within that script (see
   Principle IX).
-- `sandbox.sh` uses a case-based dispatch pattern for subcommand routing.
+- `dilxc.sh` uses a case-based dispatch pattern for subcommand routing.
   The `require_container` and `require_running` helpers validate container
   state before each command.
-- `sandbox.sh` uses `-t` flag on `lxc exec` for interactive commands
+- `dilxc.sh` uses `-t` flag on `lxc exec` for interactive commands
   (`shell`, `root`, `login`, `claude`, `claude-resume`) to allocate a TTY.
-- When adding new subcommands to `sandbox.sh`, follow the existing pattern:
+- When adding new subcommands to `dilxc.sh`, follow the existing pattern:
   add a `cmd_<name>` function and a case entry in the dispatch block.
 
 ## Governance
 
-This constitution defines the non-negotiable principles for the Claude LXC
-Sandbox project. All contributions — whether from humans or AI agents —
+This constitution defines the non-negotiable principles for the Docker-in-LXC
+project. All contributions — whether from humans or AI agents —
 MUST comply with these principles.
 
 - **Supremacy**: This constitution supersedes all other guidance when

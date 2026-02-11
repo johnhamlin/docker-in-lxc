@@ -17,7 +17,7 @@ The user runs `setup-host.sh` on their Ubuntu host to create a sandbox:
 - Pushes and executes the provisioning script inside the container
 - Takes a `clean-baseline` btrfs snapshot when done
 
-The container name defaults to `claude-sandbox` but is configurable via `-n` flag or `CLAUDE_SANDBOX` env var.
+The container name defaults to `docker-lxc` but is configurable via `-n` flag or `DILXC_CONTAINER` env var.
 
 If setup fails partway through, the user deletes the container and starts fresh.
 
@@ -44,10 +44,10 @@ Fish shell is opt-in via `--fish` flag: installs fish, writes equivalent config 
 
 Two methods:
 
-1. **Browser OAuth** (primary): After setup, the user runs `./sandbox.sh login`, which opens an interactive Claude session. They complete the OAuth flow in their browser and exit. One-time step.
+1. **Browser OAuth** (primary): After setup, the user runs `./dilxc.sh login`, which opens an interactive Claude session. They complete the OAuth flow in their browser and exit. One-time step.
 2. **API key** (alternative): Set `ANTHROPIC_API_KEY` env var before running `setup-host.sh`. The key gets written into shell config inside the container.
 
-## Daily workflow (`sandbox.sh`)
+## Daily workflow (`dilxc.sh`)
 
 The management wrapper provides these operations:
 
@@ -83,7 +83,7 @@ The management wrapper provides these operations:
 
 ## Multiple sandboxes
 
-Set `CLAUDE_SANDBOX=other-name` env var before any `sandbox.sh` command to operate on a different container. Same variable is respected by `setup-host.sh` for the default container name.
+Set `DILXC_CONTAINER=other-name` env var before any `dilxc.sh` command to operate on a different container. Same variable is respected by `setup-host.sh` for the default container name.
 
 Each container is bound to one project directory, set at creation via `--project`. Containers are fully isolated — separate project mounts, independent snapshots, no shared state. Spin up a new container per project, prefix commands with the env var, destroy when done.
 

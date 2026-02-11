@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Claude Code LXD Sandbox - Container Provisioning
+# Docker-in-LXC - Container Provisioning
 # This runs INSIDE the LXD container (called by setup-host.sh)
 # =============================================================================
 
@@ -78,8 +78,8 @@ echo "--- Configuring ubuntu user ---"
 
 # Set up git defaults (user can override)
 su - ubuntu -c 'git config --global init.defaultBranch main'
-su - ubuntu -c 'git config --global user.name "Claude Code (sandbox)"'
-su - ubuntu -c 'git config --global user.email "claude-sandbox@localhost"'
+su - ubuntu -c 'git config --global user.name "Claude Code (docker-lxc)"'
+su - ubuntu -c 'git config --global user.email "docker-lxc@localhost"'
 
 # Create a working directory
 su - ubuntu -c 'mkdir -p /home/ubuntu/project'

@@ -1,4 +1,4 @@
-# Research: LXD Sandbox for Autonomous Claude Code
+# Research: Docker-in-LXC
 
 **Branch**: `001-baseline-spec` | **Date**: 2026-02-11
 **Context**: Baseline spec — documenting decisions already made in the existing implementation.
@@ -83,7 +83,7 @@
 
 ## Decision 8: Destructive Sync (rsync --delete)
 
-**Decision**: `sync-project` and `sandbox.sh sync` use `rsync --delete`, removing any files in the working copy that don't exist in the source mount.
+**Decision**: `sync-project` and `dilxc.sh sync` use `rsync --delete`, removing any files in the working copy that don't exist in the source mount.
 
 **Rationale**: Sync is a full reset operation — the working copy should match the source exactly. This is the safest model: the user knows exactly what they'll get after a sync. The workflow for preserving container changes is to commit and push to GitHub before syncing.
 
