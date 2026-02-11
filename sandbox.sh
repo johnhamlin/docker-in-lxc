@@ -125,7 +125,7 @@ cmd_status() {
   lxc info "$CONTAINER_NAME" | grep -E "^(Name|Status|Type|Architecture|PID|Processes|Memory|Disk|Network)"
   echo ""
   echo "=== IP Address ==="
-  lxc list "$CONTAINER_NAME" -f csv -c 4 | head -1
+  lxc list "$CONTAINER_NAME" -f csv -c 4 | tr -d '"' | grep eth0
   echo ""
   echo "=== Snapshots ==="
   lxc info "$CONTAINER_NAME" | grep -A 100 "^Snapshots:" || echo "  None"
@@ -322,7 +322,7 @@ cmd_health() {
   if lxc exec "$CONTAINER_NAME" -- test -d /home/ubuntu/project; then
     echo "  Project dir:  ok"
   else
-    echo "  Project dir:  missing"
+    echo "  Project dir:  FAILED"
     ok=false
   fi
 
@@ -330,7 +330,8 @@ cmd_health() {
   if lxc exec "$CONTAINER_NAME" -- test -d /home/ubuntu/project-src; then
     echo "  Source mount: ok"
   else
-    echo "  Source mount: not mounted"
+    echo "  Source mount: FAILED"
+    ok=false
   fi
 
   $ok || { echo ""; echo "Some checks failed."; exit 1; }

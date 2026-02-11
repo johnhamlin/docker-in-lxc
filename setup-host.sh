@@ -45,6 +45,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# --- Validate required arguments ----------------------------------------------
+if [[ -z "$PROJECT_PATH" ]]; then
+  echo "Error: project path is required."
+  echo "  Usage: ./setup-host.sh -p /path/to/project"
+  exit 1
+fi
+
 echo "============================================="
 echo "  Claude Code LXD Sandbox Setup"
 echo "  Container: $CONTAINER_NAME"
@@ -107,19 +114,14 @@ else
 fi
 
 # --- Step 3: Mount project directory (read-only) ----------------------------
-if [[ -n "$PROJECT_PATH" ]]; then
-  echo "[3/6] Mounting project directory (read-only)..."
-  # Remove existing device if present
-  lxc config device remove "$CONTAINER_NAME" project 2>/dev/null || true
-  lxc config device add "$CONTAINER_NAME" project disk \
-    source="$PROJECT_PATH" \
-    path=/home/ubuntu/project-src \
-    readonly=true
-  echo "  Mounted $PROJECT_PATH -> /home/ubuntu/project-src (read-only)"
-else
-  echo "[3/6] No project path specified, skipping mount."
-  echo "  Use -p /path/to/project to mount your source code."
-fi
+echo "[3/6] Mounting project directory (read-only)..."
+# Remove existing device if present
+lxc config device remove "$CONTAINER_NAME" project 2>/dev/null || true
+lxc config device add "$CONTAINER_NAME" project disk \
+  source="$PROJECT_PATH" \
+  path=/home/ubuntu/project-src \
+  readonly=true
+echo "  Mounted $PROJECT_PATH -> /home/ubuntu/project-src (read-only)"
 
 # --- Step 4: Mount deploy directory (read-write, optional) -------------------
 if [[ -n "$DEPLOY_PATH" ]]; then
