@@ -65,7 +65,7 @@
 - [x] T020 [US1] Validate fish config in `provision-container.sh` — verify `--fish` flag triggers fish install, abbreviations, functions, PATH, and `chsh` per contracts/provision.md (FR-016, Acceptance 1.2)
 - [x] T021 [US1] Validate baseline snapshot in `setup-host.sh` — verify `clean-baseline` snapshot is taken after successful provisioning (FR-007)
 - [x] T022 [P] [US1] Validate idempotent GPG key in `provision-container.sh` — verify `gpg --dearmor --yes` for Docker repo key (FR-022)
-- [ ] T023 [US1] Acceptance test: Run `setup-host.sh -n test-sandbox -p <test-dir>` end-to-end and verify container exists, mounts correct, tooling installed, `clean-baseline` snapshot present (Acceptance 1.1)
+- [x] T023 [US1] Acceptance test: Run `setup-host.sh -n test-sandbox -p <test-dir>` end-to-end and verify container exists, mounts correct, tooling installed, `clean-baseline` snapshot present (Acceptance 1.1)
 
 **Checkpoint**: User Story 1 validated — sandbox creation works as specified
 
@@ -82,7 +82,7 @@
 - [x] T024 [US2] Validate `cmd_claude` in `sandbox.sh` — verify interactive Claude Code starts in `/home/ubuntu/project` with `--dangerously-skip-permissions` and TTY (FR-005, FR-010, Acceptance 2.1)
 - [x] T025 [US2] Validate `cmd_claude_run` in `sandbox.sh` — verify one-shot prompt execution with `printf %q` escaping in project directory (FR-011, Acceptance 2.2)
 - [x] T026 [US2] Validate `cmd_claude_resume` in `sandbox.sh` — verify session resume with `--resume` flag and TTY (Acceptance 2.3)
-- [ ] T027 [US2] Acceptance test: Run `sandbox.sh claude-run "fix the tests in src/api/ and run 'npm test' -- --grep \"auth module\""` and verify it executes non-interactively with correct working directory and the prompt passes through with quotes and spaces intact (Acceptance 2.2, SC-007)
+- [x] T027 [US2] Acceptance test: Run `sandbox.sh claude-run "fix the tests in src/api/ and run 'npm test' -- --grep \"auth module\""` and verify it executes non-interactively with correct working directory and the prompt passes through with quotes and spaces intact (Acceptance 2.2, SC-007) — **verified via exec**: printf %q escaping preserves all special chars through lxc exec chain
 
 **Checkpoint**: User Story 2 validated — Claude Code runs autonomously as specified
 
@@ -118,7 +118,7 @@
 - [x] T034 [US4] Validate `cmd_restore` in `sandbox.sh` — verify snapshot restoration with automatic container restart (FR-009, Acceptance 4.3)
 - [x] T035 [P] [US4] Validate `cmd_snapshots` in `sandbox.sh` — verify snapshot listing output (Acceptance 4.4)
 - [x] T036 [US4] Validate restore error handling — verify missing snapshot name shows available snapshots (per contracts/sandbox.md)
-- [ ] T037 [US4] Acceptance test: Take snapshot, create a file in container, restore, verify file is gone and container is running (SC-003)
+- [x] T037 [US4] Acceptance test: Take snapshot, create a file in container, restore, verify file is gone and container is running (SC-003)
 
 **Checkpoint**: User Story 4 validated — snapshot/rollback works as specified
 
@@ -137,7 +137,7 @@
 - [x] T040 [P] [US5] Validate `cmd_push` in `sandbox.sh` — verify `lxc file push` from host to container with default dest `/home/ubuntu/project/` (FR-021, Acceptance 5.3)
 - [x] T041 [US5] Validate bash `sync-project` function in `provision-container.sh` — verify same rsync command and excludes as `cmd_sync` (FR-006, Acceptance 5.4)
 - [x] T042 [US5] Validate bash `deploy` function in `provision-container.sh` — verify rsync to `/mnt/deploy` with mount check (FR-018, Acceptance 5.5)
-- [ ] T043 [US5] Acceptance test: Add a file on host, run `sandbox.sh sync`, verify file appears in `/home/ubuntu/project` and `node_modules`/`.git` are excluded (SC-004)
+- [x] T043 [US5] Acceptance test: Add a file on host, run `sandbox.sh sync`, verify file appears in `/home/ubuntu/project` and `node_modules`/`.git` are excluded (SC-004)
 
 **Checkpoint**: User Story 5 validated — sync and file transfer work as specified
 
@@ -175,7 +175,7 @@
 - [x] T052 [US7] Validate `cmd_docker` in `sandbox.sh` — verify Docker command passthrough with `printf %q` escaping (FR-011, Acceptance 7.1, 7.2)
 - [x] T053 [US7] Validate `cmd_logs` in `sandbox.sh` — verify Docker container log display (Acceptance 7.3)
 - [x] T054 [US7] Validate nesting configuration — verify `security.nesting=true` in `setup-host.sh` enables Docker inside container (FR-001)
-- [ ] T055 [US7] Acceptance test: Run `sandbox.sh docker run hello-world` and verify successful output (SC-002 prerequisite)
+- [x] T055 [US7] Acceptance test: Run `sandbox.sh docker run hello-world` and verify successful output (SC-002 prerequisite)
 
 **Checkpoint**: User Story 7 validated — Docker works inside the sandbox as specified
 
@@ -191,7 +191,7 @@
 
 - [x] T056 [US8] Validate `CLAUDE_SANDBOX` env var in `sandbox.sh` — verify container name defaults to `claude-sandbox` and is overridable (FR-015, Acceptance 8.1)
 - [x] T057 [US8] Validate `CLAUDE_SANDBOX` in `setup-host.sh` — verify `-n` flag and env var fallback per contracts/setup-host.md
-- [ ] T058 [US8] Acceptance test: Set `CLAUDE_SANDBOX=test-b`, run `sandbox.sh status`, verify it targets `test-b` container (Acceptance 8.1, SC-006)
+- [x] T058 [US8] Acceptance test: Set `CLAUDE_SANDBOX=test-b`, run `sandbox.sh status`, verify it targets `test-b` container (Acceptance 8.1, SC-006)
 
 **Checkpoint**: User Story 8 validated — multiple sandboxes work independently
 
@@ -208,7 +208,7 @@
 - [x] T059 [US9] Validate `cmd_health_check` in `sandbox.sh` — verify checks for network, Docker, Claude Code, project directory, and source mount (FR-014, Acceptance 9.1)
 - [x] T060 [US9] Validate health-check exit code — verify nonzero exit on any component failure (Acceptance 9.2)
 - [x] T061 [US9] Validate health-check output format — verify each component reports `ok` or `FAILED` per contracts/sandbox.md — **FIXED**: changed "missing"/"not mounted" to "FAILED", added `ok=false` for source mount
-- [ ] T062 [US9] Acceptance test: Run `sandbox.sh health-check` on a working container and verify all five checks pass (SC-005)
+- [x] T062 [US9] Acceptance test: Run `sandbox.sh health-check` on a working container and verify all five checks pass (SC-005)
 
 **Checkpoint**: User Story 9 validated — health check works as specified
 
@@ -223,7 +223,7 @@
 - [x] T065 [P] Validate edge case: commands on stopped container — verify `require_running` produces "container is STOPPED" with start instructions
 - [x] T066 Validate `sandbox.sh` case-based dispatch — verify all subcommands from contracts/sandbox.md are routed and `help` is the default
 - [x] T067 Validate CLAUDE.md accuracy — verify Known Issues, Key Commands, and Editing Notes match the current implementation
-- [ ] T068 Run quickstart.md validation — walk through quickstart.md end-to-end and verify each command works as documented
+- [x] T068 Run quickstart.md validation — walk through quickstart.md end-to-end and verify each command works as documented (auth commands skipped — require browser OAuth)
 
 ---
 
