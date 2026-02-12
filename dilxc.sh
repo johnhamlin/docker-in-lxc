@@ -66,6 +66,7 @@ Commands:
   containers             List available containers and their status
   health-check           Verify container, network, Docker, and Claude Code
   git-auth               Check SSH agent and GitHub CLI auth status
+  customize              Create/edit custom provisioning script
   destroy                Delete the container entirely (asks for confirmation)
 
 Container Selection (first match wins):
@@ -653,6 +654,39 @@ cmd_update() {
   fi
 }
 
+cmd_customize() {
+  local custom_file="$SCRIPT_DIR/custom-provision.sh"
+  if [[ ! -f "$custom_file" ]]; then
+    cat > "$custom_file" << 'TEMPLATE'
+#!/bin/bash
+set -euo pipefail
+# =============================================================================
+# Custom Provisioning Script
+# This file runs inside the LXD container after standard provisioning.
+#
+# Execution context:
+#   - Runs as root inside an Ubuntu 24.04 container
+#   - Uses set -euo pipefail (any failing command halts the script)
+#   - Network access is available
+#   - Docker, Node.js 22, npm, git, uv, gh CLI are already installed
+#   - MUST be idempotent (safe to run multiple times)
+#   - MUST use non-interactive flags (e.g., apt-get install -y)
+#
+# Example: install a tool
+#   echo "--- Installing mytool ---"
+#   apt-get install -y mytool
+#   echo "  mytool installed ✓"
+# =============================================================================
+
+# Add your custom provisioning commands below:
+
+TEMPLATE
+    chmod +x "$custom_file"
+    echo "Created starter template: $custom_file"
+  fi
+  "${EDITOR:-nano}" "$custom_file"
+}
+
 # --- Main dispatch -----------------------------------------------------------
 case "${1:-help}" in
   init)          shift; cmd_init "$@" ;;
@@ -680,6 +714,7 @@ case "${1:-help}" in
   containers)    cmd_containers ;;
   health|health-check) cmd_health ;;
   git-auth)      cmd_git_auth ;;
+  customize)     cmd_customize ;;
   destroy)       cmd_destroy ;;
   help|*)        usage ;;
 esac

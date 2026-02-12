@@ -29,6 +29,32 @@ Three scripts, each with a distinct execution context:
 - `/home/ubuntu/project` — Writable working copy (Claude works here)
 - `/mnt/deploy` — Optional read-write mount for deploying output to host
 
+## Custom Provision Scripts
+
+Users can create an optional `custom-provision.sh` in the repo root to install additional tools in every new container. This file is gitignored (user-specific, not committed to the shared repo).
+
+### How it works
+
+- `setup-host.sh` detects `custom-provision.sh` in the repo root and pushes it to `/tmp/custom-provision.sh` inside the container
+- `provision-container.sh` checks for `/tmp/custom-provision.sh` at the end of standard provisioning and executes it if present
+- If the file is absent, both scripts skip silently — no errors
+
+### Writing a custom provision script
+
+The script runs as **root** inside an **Ubuntu 24.04** container with network access. The following are already installed by standard provisioning: Docker CE, Node.js 22, npm, git, Claude Code, uv, Spec Kit (`specify-cli`), gh CLI, and common dev tools (jq, ripgrep, fd-find, htop, tmux, postgresql-client).
+
+**Required conventions:**
+- Start with `#!/bin/bash` and `set -euo pipefail` (so failing commands halt the script and propagate the error to the parent provisioning process)
+- Must be **idempotent** — safe to run multiple times (use `apt-get install -y`, check-before-install patterns like `command -v tool || install_tool`)
+- Must be **non-interactive** — no stdin prompts (`DEBIAN_FRONTEND=noninteractive`, `-y` flags)
+- Use section structure: `echo "--- Installing X ---"` headers, `echo "  X installed ✓"` results
+
+**Available package managers:** `apt-get`, `npm`, `pip`/`uv`, `cargo`
+
+### Creating the file
+
+Run `./dilxc.sh customize` to create a starter template and open it in your editor, or create `custom-provision.sh` manually in the repo root.
+
 ## Key Commands
 
 ```bash
@@ -43,8 +69,9 @@ Three scripts, each with a distinct execution context:
 ./dilxc.sh login
 
 # Re-provision an existing container without recreating it
-lxc exec docker-lxc -- rm -f /tmp/provision-container.sh
+lxc exec docker-lxc -- rm -f /tmp/provision-container.sh /tmp/custom-provision.sh
 lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
+[[ -f custom-provision.sh ]] && lxc file push custom-provision.sh docker-lxc/tmp/custom-provision.sh
 lxc exec docker-lxc -- chmod +x /tmp/provision-container.sh
 lxc exec docker-lxc -- /tmp/provision-container.sh
 
@@ -60,6 +87,7 @@ lxc exec docker-lxc -- /tmp/provision-container.sh
 ./dilxc.sh docker <args>        # run docker commands inside sandbox
 ./dilxc.sh health-check         # verify container, network, Docker, Claude
 ./dilxc.sh git-auth             # check SSH agent and GitHub CLI auth status
+./dilxc.sh customize            # create/edit custom provisioning script
 
 # Multiple containers
 DILXC_CONTAINER=other-name ./dilxc.sh shell
@@ -111,6 +139,7 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 - `dilxc.sh` uses `-t` flag on `lxc exec` for interactive commands (`shell`, `root`, `login`, `claude`, `claude-resume`) to allocate a proper TTY.
 - `dilxc.sh` uses `printf %q` for safe shell escaping in `cmd_claude_run` and `cmd_docker` to handle arguments with spaces and special characters.
 - `provision-container.sh` uses `gpg --dearmor --yes` so the Docker GPG key step is idempotent on re-provisioning.
+- `custom-provision.sh` is invoked at the end of `provision-container.sh` and pushed by `setup-host.sh` — both files must stay in sync regarding the `/tmp/custom-provision.sh` path convention.
 - All LXD disk devices (`project`, `deploy`, `gh-config`) MUST use `shift=true` for kernel idmapped mounts. Without it, host UID 1000 maps to `nobody` (65534) inside the unprivileged container. This breaks `0600` files (gh-config) and causes incorrect ownership on all mounted files. The `gh-config` device is created in three locations (`setup-host.sh`, `ensure_auth_forwarding` in `dilxc.sh`, `cmd_update` in `dilxc.sh`) — all must include `shift=true`.
 
 ## Active Technologies
@@ -121,6 +150,7 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 - N/A (no persistent data beyond `.dilxc` convention files) (003-cli-ux)
 - Bash (GNU Bash, Ubuntu 24.04 default) + LXD (`lxc` CLI), GitHub CLI (`gh`), OpenSSH (`ssh-agent`, `ssh-add`) (004-git-forge-auth)
 - N/A (LXD device metadata in Dqlite database) (004-git-forge-auth)
+- N/A (single optional file in repo root, `/tmp/` inside container) (005-custom-provision-scripts)
 
 ## Recent Changes
 - 004-git-forge-auth: Added SSH agent forwarding, GitHub CLI config sharing, `git-auth` diagnostic subcommand, `ensure_auth_forwarding` pre-command hook
