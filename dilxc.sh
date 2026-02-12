@@ -123,14 +123,16 @@ validate_port() {
 }
 
 ensure_auth_forwarding() {
+  local devices
+  devices=$(lxc config device show "$CONTAINER_NAME" 2>/dev/null) || return 0
   # Update SSH agent proxy device connect path to current host socket
-  if lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^ssh-agent:"; then
+  if echo "$devices" | grep -q "^ssh-agent:"; then
     if [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
       lxc config device set "$CONTAINER_NAME" ssh-agent connect="unix:$SSH_AUTH_SOCK" 2>/dev/null || true
     fi
   fi
   # Add gh config mount if host config exists but device is missing
-  if ! lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^gh-config:"; then
+  if ! echo "$devices" | grep -q "^gh-config:"; then
     if [[ -d "$HOME/.config/gh" ]]; then
       lxc config device add "$CONTAINER_NAME" gh-config disk \
         source="$HOME/.config/gh" \
@@ -416,9 +418,10 @@ cmd_git_auth() {
   if lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^ssh-agent:"; then
     local ssh_output
     if ssh_output=$(lxc exec "$CONTAINER_NAME" -- su - ubuntu -c "ssh-add -l" 2>&1); then
-      local count
-      count=$(echo "$ssh_output" | wc -l)
-      echo "  SSH agent:    ok ($count identities available)"
+      local count word
+      count=$(echo "$ssh_output" | grep -c '^[0-9]')
+      word="identities"; [[ "$count" -eq 1 ]] && word="identity"
+      echo "  SSH agent:    ok ($count $word available)"
     else
       if echo "$ssh_output" | grep -q "Could not open a connection"; then
         echo "  SSH agent:    NOT AVAILABLE"
@@ -460,7 +463,7 @@ cmd_git_auth() {
     ok=false
   fi
 
-  $ok || { echo ""; exit 1; }
+  $ok || { echo ""; echo "Some checks failed."; exit 1; }
 }
 
 cmd_destroy() {

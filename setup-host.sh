@@ -141,6 +141,7 @@ fi
 echo "[5/8] Setting up git & forge auth forwarding..."
 
 # SSH agent proxy: forwards host SSH agent socket into container
+lxc config device remove "$CONTAINER_NAME" ssh-agent 2>/dev/null || true
 lxc config device add "$CONTAINER_NAME" ssh-agent proxy \
   connect="unix:${SSH_AUTH_SOCK:-/dev/null}" \
   listen=unix:/tmp/ssh-agent.sock \
@@ -156,6 +157,7 @@ else
 fi
 
 # gh config mount: share host GitHub CLI config read-only
+lxc config device remove "$CONTAINER_NAME" gh-config 2>/dev/null || true
 if [[ -d "$HOME/.config/gh" ]]; then
   lxc config device add "$CONTAINER_NAME" gh-config disk \
     source="$HOME/.config/gh" \
