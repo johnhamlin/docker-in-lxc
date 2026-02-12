@@ -182,6 +182,10 @@ echo "Taking clean baseline snapshot..."
 lxc snapshot "$CONTAINER_NAME" clean-baseline
 echo "  Snapshot 'clean-baseline' created"
 
+# Create .dilxc in project directory for automatic container detection
+echo "$CONTAINER_NAME" > "$PROJECT_PATH/.dilxc"
+echo "  Created $PROJECT_PATH/.dilxc"
+
 # --- Done! -------------------------------------------------------------------
 echo ""
 echo "============================================="
