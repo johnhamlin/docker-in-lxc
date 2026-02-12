@@ -49,7 +49,7 @@ The script runs as **root** inside an **Ubuntu 24.04** container with network ac
 - Must be **non-interactive** — no stdin prompts (`DEBIAN_FRONTEND=noninteractive`, `-y` flags)
 - Use section structure: `echo "--- Installing X ---"` headers, `echo "  X installed ✓"` results
 
-**Available package managers:** `apt-get`, `npm`, `pip`/`uv`, `cargo`
+**Available package managers:** `apt-get`, `npm`, `pip`/`uv`
 
 ### Creating the file
 
