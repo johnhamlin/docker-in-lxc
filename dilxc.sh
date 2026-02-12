@@ -668,7 +668,7 @@ set -euo pipefail
 #   - Runs as root inside an Ubuntu 24.04 container
 #   - Uses set -euo pipefail (any failing command halts the script)
 #   - Network access is available
-#   - Docker, Node.js 22, npm, git, uv, gh CLI are already installed
+#   - Docker, Node.js 22, npm, git, Claude Code, uv, Spec Kit, gh CLI are already installed
 #   - MUST be idempotent (safe to run multiple times)
 #   - MUST use non-interactive flags (e.g., apt-get install -y)
 #

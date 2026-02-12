@@ -153,5 +153,6 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 - N/A (single optional file in repo root, `/tmp/` inside container) (005-custom-provision-scripts)
 
 ## Recent Changes
+- 005-custom-provision-scripts: Added optional `custom-provision.sh` mechanism, `customize` CLI subcommand, agent instructions for generating custom provision scripts
 - 004-git-forge-auth: Added SSH agent forwarding, GitHub CLI config sharing, `git-auth` diagnostic subcommand, `ensure_auth_forwarding` pre-command hook
 - 001-baseline-spec: Added Bash (GNU Bash, no minimum version requirement beyond Ubuntu 24.04 default) + LXD (`lxc` CLI), rsync, btrfs (via LXD storage pool)
