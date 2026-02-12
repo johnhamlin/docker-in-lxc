@@ -115,6 +115,8 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 - Bash (GNU Bash, no minimum version requirement beyond Ubuntu 24.04 default) + LXD (`lxc` CLI), rsync, btrfs (via LXD storage pool) (001-baseline-spec)
 - btrfs snapshots via `lxc snapshot` / `lxc restore` (001-baseline-spec)
 - LXD proxy devices via `lxc config device add/show/remove` for TCP port forwarding (002-port-proxy)
+- Bash (GNU Bash, Ubuntu 24.04 default) + LXD (`lxc` CLI), GNU coreutils (`readlink -f`, `dirname`), git (for `update`) (003-cli-ux)
+- N/A (no persistent data beyond `.dilxc` convention files) (003-cli-ux)
 
 ## Recent Changes
 - 001-baseline-spec: Added Bash (GNU Bash, no minimum version requirement beyond Ubuntu 24.04 default) + LXD (`lxc` CLI), rsync, btrfs (via LXD storage pool)
