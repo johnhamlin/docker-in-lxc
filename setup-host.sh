@@ -162,7 +162,8 @@ if [[ -d "$HOME/.config/gh" ]]; then
   lxc config device add "$CONTAINER_NAME" gh-config disk \
     source="$HOME/.config/gh" \
     path=/home/ubuntu/.config/gh \
-    readonly=true
+    readonly=true \
+    shift=true
   echo "  GitHub CLI config: mounted"
 else
   echo "  GitHub CLI config: skipped (no ~/.config/gh on host)"

@@ -137,7 +137,8 @@ ensure_auth_forwarding() {
       lxc config device add "$CONTAINER_NAME" gh-config disk \
         source="$HOME/.config/gh" \
         path=/home/ubuntu/.config/gh \
-        readonly=true 2>/dev/null || true
+        readonly=true \
+        shift=true 2>/dev/null || true
     fi
   fi
 }
@@ -644,7 +645,8 @@ cmd_update() {
         lxc config device add "$CONTAINER_NAME" gh-config disk \
           source="$HOME/.config/gh" \
           path=/home/ubuntu/.config/gh \
-          readonly=true
+          readonly=true \
+          shift=true
         echo "  Added GitHub CLI config mount"
       fi
     fi
