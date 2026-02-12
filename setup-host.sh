@@ -60,7 +60,7 @@ echo ""
 
 # --- Step 1: Install LXD if needed ------------------------------------------
 if ! command -v lxc &> /dev/null; then
-  echo "[1/6] Installing LXD..."
+  echo "[1/8] Installing LXD..."
   sudo snap install lxd
   sudo lxd init --auto
   # Add current user to lxd group
@@ -69,7 +69,7 @@ if ! command -v lxc &> /dev/null; then
   echo "    Log out and back in, then re-run this script."
   exit 1
 else
-  echo "[1/6] LXD already installed"
+  echo "[1/8] LXD already installed"
 fi
 
 # Verify LXD/Incus is initialized (has storage + network)
@@ -86,9 +86,9 @@ fi
 
 # --- Step 2: Create the container --------------------------------------------
 if lxc info "$CONTAINER_NAME" &> /dev/null 2>&1; then
-  echo "[2/6] Container '$CONTAINER_NAME' already exists. Skipping creation."
+  echo "[2/8] Container '$CONTAINER_NAME' already exists. Skipping creation."
 else
-  echo "[2/6] Creating Ubuntu $UBUNTU_VERSION container..."
+  echo "[2/8] Creating Ubuntu $UBUNTU_VERSION container..."
   lxc launch "ubuntu:$UBUNTU_VERSION" "$CONTAINER_NAME" \
     -c security.nesting=true \
     -c security.syscalls.intercept.mknod=true \
@@ -114,7 +114,7 @@ else
 fi
 
 # --- Step 3: Mount project directory (read-only) ----------------------------
-echo "[3/6] Mounting project directory (read-only)..."
+echo "[3/8] Mounting project directory (read-only)..."
 # Remove existing device if present
 lxc config device remove "$CONTAINER_NAME" project 2>/dev/null || true
 lxc config device add "$CONTAINER_NAME" project disk \
@@ -125,7 +125,7 @@ echo "  Mounted $PROJECT_PATH -> /home/ubuntu/project-src (read-only)"
 
 # --- Step 4: Mount deploy directory (read-write, optional) -------------------
 if [[ -n "$DEPLOY_PATH" ]]; then
-  echo "[4/6] Mounting deploy directory..."
+  echo "[4/8] Mounting deploy directory..."
   lxc config device remove "$CONTAINER_NAME" deploy 2>/dev/null || true
   lxc config device add "$CONTAINER_NAME" deploy disk \
     source="$DEPLOY_PATH" \
@@ -133,12 +133,44 @@ if [[ -n "$DEPLOY_PATH" ]]; then
   echo "  Mounted $DEPLOY_PATH -> /mnt/deploy (read-write)"
   echo "  Warning: Claude Code CAN write to this path on the host!"
 else
-  echo "[4/6] No deploy path specified, skipping."
+  echo "[4/8] No deploy path specified, skipping."
   echo "  Use -d /srv/www to mount a deploy target."
 fi
 
-# --- Step 5: Run container provisioning script -------------------------------
-echo "[5/6] Provisioning container (this takes a few minutes)..."
+# --- Step 5: Git & forge auth devices ----------------------------------------
+echo "[5/8] Setting up git & forge auth forwarding..."
+
+# SSH agent proxy: forwards host SSH agent socket into container
+lxc config device remove "$CONTAINER_NAME" ssh-agent 2>/dev/null || true
+lxc config device add "$CONTAINER_NAME" ssh-agent proxy \
+  connect="unix:${SSH_AUTH_SOCK:-/dev/null}" \
+  listen=unix:/tmp/ssh-agent.sock \
+  bind=container \
+  uid=1000 \
+  gid=1000 \
+  mode=0600
+if [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
+  echo "  SSH agent forwarding: configured"
+else
+  echo "  SSH agent forwarding: placeholder (no agent running)"
+  echo "    Start your agent and run ./dilxc.sh shell to activate"
+fi
+
+# gh config mount: share host GitHub CLI config read-only
+lxc config device remove "$CONTAINER_NAME" gh-config 2>/dev/null || true
+if [[ -d "$HOME/.config/gh" ]]; then
+  lxc config device add "$CONTAINER_NAME" gh-config disk \
+    source="$HOME/.config/gh" \
+    path=/home/ubuntu/.config/gh \
+    readonly=true
+  echo "  GitHub CLI config: mounted"
+else
+  echo "  GitHub CLI config: skipped (no ~/.config/gh on host)"
+  echo "    Run 'gh auth login' on host, then ./dilxc.sh update"
+fi
+
+# --- Step 6: Run container provisioning script -------------------------------
+echo "[6/8] Provisioning container (this takes a few minutes)..."
 lxc exec "$CONTAINER_NAME" -- rm -f /tmp/provision-container.sh
 lxc file push "$(dirname "$0")/provision-container.sh" \
   "$CONTAINER_NAME/tmp/provision-container.sh"
@@ -150,9 +182,9 @@ lxc exec "$CONTAINER_NAME" -- /tmp/provision-container.sh "${PROVISION_ARGS[@]+"
   exit 1
 }
 
-# --- Step 6: Authentication --------------------------------------------------
+# --- Step 7: Authentication --------------------------------------------------
 echo ""
-echo "[6/6] Authentication Setup"
+echo "[7/8] Authentication Setup"
 
 if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
   escaped=$(printf '%q' "$ANTHROPIC_API_KEY")
@@ -176,9 +208,9 @@ else
   echo "  to inject an API key instead."
 fi
 
-# --- Take a clean snapshot ---------------------------------------------------
+# --- Step 8: Take a clean snapshot -------------------------------------------
 echo ""
-echo "Taking clean baseline snapshot..."
+echo "[8/8] Taking clean baseline snapshot..."
 lxc snapshot "$CONTAINER_NAME" clean-baseline
 echo "  Snapshot 'clean-baseline' created"
 

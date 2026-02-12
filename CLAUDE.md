@@ -59,6 +59,7 @@ lxc exec docker-lxc -- /tmp/provision-container.sh
 ./dilxc.sh sync                 # rsync project-src -> project
 ./dilxc.sh docker <args>        # run docker commands inside sandbox
 ./dilxc.sh health-check         # verify container, network, Docker, Claude
+./dilxc.sh git-auth             # check SSH agent and GitHub CLI auth status
 
 # Multiple containers
 DILXC_CONTAINER=other-name ./dilxc.sh shell
@@ -117,6 +118,9 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 - LXD proxy devices via `lxc config device add/show/remove` for TCP port forwarding (002-port-proxy)
 - Bash (GNU Bash, Ubuntu 24.04 default) + LXD (`lxc` CLI), GNU coreutils (`readlink -f`, `dirname`), git (for `update`) (003-cli-ux)
 - N/A (no persistent data beyond `.dilxc` convention files) (003-cli-ux)
+- Bash (GNU Bash, Ubuntu 24.04 default) + LXD (`lxc` CLI), GitHub CLI (`gh`), OpenSSH (`ssh-agent`, `ssh-add`) (004-git-forge-auth)
+- N/A (LXD device metadata in Dqlite database) (004-git-forge-auth)
 
 ## Recent Changes
+- 004-git-forge-auth: Added SSH agent forwarding, GitHub CLI config sharing, `git-auth` diagnostic subcommand, `ensure_auth_forwarding` pre-command hook
 - 001-baseline-spec: Added Bash (GNU Bash, no minimum version requirement beyond Ubuntu 24.04 default) + LXD (`lxc` CLI), rsync, btrfs (via LXD storage pool)

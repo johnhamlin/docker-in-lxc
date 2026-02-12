@@ -73,6 +73,17 @@ apt-get install -y \
 
 echo "  Dev tools installed ✓"
 
+# --- GitHub CLI ---------------------------------------------------------------
+echo "--- Installing GitHub CLI ---"
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+  -o /etc/apt/keyrings/githubcli-archive-keyring.gpg
+chmod a+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
+  tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+apt-get update
+apt-get install -y gh
+echo "  GitHub CLI $(gh --version | head -1) ✓"
+
 # --- Configure ubuntu user ---------------------------------------------------
 echo "--- Configuring ubuntu user ---"
 
@@ -89,6 +100,9 @@ cat >> /home/ubuntu/.bashrc << 'ALIASES'
 
 # Add uv / Spec Kit to PATH
 export PATH="$HOME/.local/bin:$PATH"
+
+# SSH agent socket (forwarded from host via LXD proxy device)
+export SSH_AUTH_SOCK=/tmp/ssh-agent.sock
 
 # Claude Code sandbox aliases
 alias cc='claude --dangerously-skip-permissions'
@@ -130,6 +144,9 @@ if $INSTALL_FISH; then
   cat > /home/ubuntu/.config/fish/config.fish << 'FISHCONFIG'
 # Add uv / Spec Kit to PATH
 fish_add_path ~/.local/bin
+
+# SSH agent socket (forwarded from host via LXD proxy device)
+set -gx SSH_AUTH_SOCK /tmp/ssh-agent.sock
 
 # Claude Code sandbox aliases
 abbr -a cc 'claude --dangerously-skip-permissions'
