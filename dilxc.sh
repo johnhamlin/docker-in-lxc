@@ -68,7 +68,7 @@ Commands:
   destroy                Delete the container entirely (asks for confirmation)
 
 Container Selection (first match wins):
-  @<name> prefix         ./dilxc.sh @myproject shell
+  @<name> prefix         dilxc @myproject shell
   DILXC_CONTAINER        Environment variable override
   .dilxc file            Auto-detected from current/ancestor directory
   (default)              docker-lxc
@@ -537,6 +537,10 @@ cmd_init() {
 }
 
 cmd_update() {
+  if [[ ! -d "$SCRIPT_DIR/.git" ]]; then
+    echo "Error: not a git checkout — update by re-downloading from GitHub"
+    exit 1
+  fi
   echo "Updating Docker-in-LXC from $(git -C "$SCRIPT_DIR" rev-parse --short HEAD)..."
   git -C "$SCRIPT_DIR" pull
 }

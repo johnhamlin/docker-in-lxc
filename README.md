@@ -33,6 +33,7 @@ If Docker also runs on your host, you'll need firewall rules to prevent Docker's
 ## Install
 
 ```bash
+mkdir -p ~/.local/bin ~/.local/share
 git clone https://github.com/johnhamlin/docker-in-lxc.git ~/.local/share/docker-in-lxc
 ln -s ~/.local/share/docker-in-lxc/dilxc.sh ~/.local/bin/dilxc
 ```
