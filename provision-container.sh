@@ -53,12 +53,6 @@ echo "--- Installing Claude Code ---"
 npm install -g @anthropic-ai/claude-code
 echo "  Claude Code installed ✓"
 
-# --- uv and Spec Kit ---------------------------------------------------------
-echo "--- Installing uv and Spec Kit ---"
-curl -LsSf https://astral.sh/uv/install.sh | su - ubuntu -c "bash"
-su - ubuntu -c '/home/ubuntu/.local/bin/uv tool install specify-cli --from "git+https://github.com/github/spec-kit.git"'
-echo "  uv + Spec Kit installed ✓"
-
 # --- Git and common dev tools ------------------------------------------------
 echo "--- Installing dev tools ---"
 apt-get install -y \
@@ -68,8 +62,7 @@ apt-get install -y \
   ripgrep \
   fd-find \
   htop \
-  tmux \
-  postgresql-client
+  tmux
 
 echo "  Dev tools installed ✓"
 
@@ -98,7 +91,7 @@ su - ubuntu -c 'mkdir -p /home/ubuntu/project'
 # Add helpful aliases to .bashrc (Claude Code uses bash internally)
 cat >> /home/ubuntu/.bashrc << 'ALIASES'
 
-# Add uv / Spec Kit to PATH
+# User-installed tools
 export PATH="$HOME/.local/bin:$PATH"
 
 # SSH agent socket (forwarded from host via LXD proxy device)
@@ -142,7 +135,7 @@ if $INSTALL_FISH; then
 
   su - ubuntu -c 'mkdir -p /home/ubuntu/.config/fish'
   cat > /home/ubuntu/.config/fish/config.fish << 'FISHCONFIG'
-# Add uv / Spec Kit to PATH
+# User-installed tools
 fish_add_path ~/.local/bin
 
 # SSH agent socket (forwarded from host via LXD proxy device)
@@ -207,6 +200,4 @@ echo "  Node.js:     $(node --version)"
 echo "  npm:         $(npm --version)"
 echo "  Git:         $(git --version)"
 echo "  Claude Code: $(claude --version 2>/dev/null || echo 'installed')"
-echo "  uv:          $(su - ubuntu -c '/home/ubuntu/.local/bin/uv --version' 2>/dev/null || echo 'installed')"
-echo "  Spec Kit:    $(su - ubuntu -c '/home/ubuntu/.local/bin/specify --version' 2>/dev/null || echo 'installed')"
 echo ""
