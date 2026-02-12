@@ -4,7 +4,29 @@
 # Common operations for your container
 # =============================================================================
 
-CONTAINER_NAME="${DILXC_CONTAINER:-docker-lxc}"
+# --- Container name resolution (first match wins) ---------------------------
+# 1. @name prefix:    ./dilxc.sh @project-b shell
+# 2. DILXC_CONTAINER: env var override
+# 3. .dilxc file:     walk up from $PWD looking for .dilxc
+# 4. Default:         docker-lxc
+if [[ "${1:-}" == @* ]]; then
+  CONTAINER_NAME="${1#@}"
+  shift
+elif [[ -n "${DILXC_CONTAINER:-}" ]]; then
+  CONTAINER_NAME="$DILXC_CONTAINER"
+else
+  _dir="$PWD"
+  CONTAINER_NAME=""
+  while [[ "$_dir" != "/" ]]; do
+    if [[ -f "$_dir/.dilxc" ]]; then
+      CONTAINER_NAME=$(head -1 "$_dir/.dilxc")
+      break
+    fi
+    _dir=$(dirname "$_dir")
+  done
+  unset _dir
+  CONTAINER_NAME="${CONTAINER_NAME:-docker-lxc}"
+fi
 
 usage() {
   cat << EOF
@@ -36,11 +58,15 @@ Commands:
   docker <args>          Run docker commands inside the sandbox
   proxy <action>         Manage port proxies (add, list, rm)
 
+  containers             List available containers and their status
   health-check           Verify container, network, Docker, and Claude Code
   destroy                Delete the container entirely (asks for confirmation)
 
-Environment:
-  DILXC_CONTAINER        Container name (default: docker-lxc)
+Container Selection (first match wins):
+  @<name> prefix         ./dilxc.sh @myproject shell
+  DILXC_CONTAINER        Environment variable override
+  .dilxc file            Auto-detected from current/ancestor directory
+  (default)              docker-lxc
 
 Examples:
   ./dilxc.sh login                                  # first-time auth
@@ -359,6 +385,18 @@ cmd_destroy() {
   fi
 }
 
+cmd_containers() {
+  local active="$CONTAINER_NAME"
+  echo "CONTAINER                        STATUS"
+  lxc list -f csv -c ns | while IFS=, read -r name status; do
+    if [[ "$name" == "$active" ]]; then
+      printf "%-32s %s  (active)\n" "$name" "$status"
+    else
+      printf "%-32s %s\n" "$name" "$status"
+    fi
+  done
+}
+
 # --- Proxy commands ----------------------------------------------------------
 
 cmd_proxy_add() {
@@ -502,6 +540,7 @@ case "${1:-help}" in
   logs)          cmd_logs ;;
   docker)        shift; cmd_docker "$@" ;;
   proxy)         shift; cmd_proxy "$@" ;;
+  containers)    cmd_containers ;;
   health|health-check) cmd_health ;;
   destroy)       cmd_destroy ;;
   help|*)        usage ;;
