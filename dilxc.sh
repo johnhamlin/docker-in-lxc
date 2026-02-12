@@ -28,11 +28,16 @@ else
   CONTAINER_NAME="${CONTAINER_NAME:-docker-lxc}"
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+
 usage() {
   cat << EOF
-Usage: ./dilxc.sh <command> [options]
+Usage: dilxc <command> [options]
 
 Commands:
+  init [options]         Create a new sandbox (runs setup-host.sh)
+  update                 Update Docker-in-LXC to the latest version
+
   shell                  Open a shell in the container as ubuntu user
   root                   Open a root shell in the container
   start                  Start the container
@@ -63,23 +68,26 @@ Commands:
   destroy                Delete the container entirely (asks for confirmation)
 
 Container Selection (first match wins):
-  @<name> prefix         ./dilxc.sh @myproject shell
+  @<name> prefix         dilxc @myproject shell
   DILXC_CONTAINER        Environment variable override
   .dilxc file            Auto-detected from current/ancestor directory
   (default)              docker-lxc
 
 Examples:
-  ./dilxc.sh login                                  # first-time auth
-  ./dilxc.sh shell
-  ./dilxc.sh claude
-  ./dilxc.sh claude-run "fix the failing tests in src/api/"
-  ./dilxc.sh claude-resume                          # pick up where you left off
-  ./dilxc.sh exec npm test                          # run a command in project dir
-  ./dilxc.sh snapshot before-big-refactor
-  ./dilxc.sh restore before-big-refactor
-  ./dilxc.sh pull /home/ubuntu/project/dist/ ./dist/
-  ./dilxc.sh docker compose logs -f
-  ./dilxc.sh health-check
+  dilxc init -p /path/to/project                    # create a sandbox
+  dilxc init -p /path/to/project -n mybox --fish    # with options
+  dilxc login                                       # first-time auth
+  dilxc shell
+  dilxc claude
+  dilxc claude-run "fix the failing tests in src/api/"
+  dilxc claude-resume                               # pick up where you left off
+  dilxc exec npm test                               # run a command in project dir
+  dilxc snapshot before-big-refactor
+  dilxc restore before-big-refactor
+  dilxc pull /home/ubuntu/project/dist/ ./dist/
+  dilxc docker compose logs -f
+  dilxc health-check
+  dilxc update                                      # pull latest version
 EOF
 }
 
@@ -522,8 +530,25 @@ cmd_proxy() {
   esac
 }
 
+# --- Init / Update -----------------------------------------------------------
+
+cmd_init() {
+  exec "$SCRIPT_DIR/setup-host.sh" "$@"
+}
+
+cmd_update() {
+  if [[ ! -d "$SCRIPT_DIR/.git" ]]; then
+    echo "Error: not a git checkout — update by re-downloading from GitHub"
+    exit 1
+  fi
+  echo "Updating Docker-in-LXC from $(git -C "$SCRIPT_DIR" rev-parse --short HEAD)..."
+  git -C "$SCRIPT_DIR" pull
+}
+
 # --- Main dispatch -----------------------------------------------------------
 case "${1:-help}" in
+  init)          shift; cmd_init "$@" ;;
+  update)        cmd_update ;;
   shell)         cmd_shell ;;
   root)          cmd_root ;;
   start)         cmd_start ;;
