@@ -34,6 +34,7 @@ Commands:
 
   logs                   Show Docker container logs inside sandbox
   docker <args>          Run docker commands inside the sandbox
+  proxy <action>         Manage port proxies (add, list, rm)
 
   health-check           Verify container, network, Docker, and Claude Code
   destroy                Delete the container entirely (asks for confirmation)
@@ -73,6 +74,15 @@ require_running() {
   if [[ "$state" != "RUNNING" ]]; then
     echo "Error: container '$CONTAINER_NAME' is $state (not running)"
     echo "  Start it with: ./dilxc.sh start"
+    exit 1
+  fi
+}
+
+validate_port() {
+  local value="$1"
+  local label="$2"
+  if [[ -z "$value" || ! "$value" =~ ^[0-9]+$ || "$value" -lt 1 || "$value" -gt 65535 ]]; then
+    echo "Error: invalid $label '$value' — must be a number between 1 and 65535"
     exit 1
   fi
 }
@@ -349,6 +359,127 @@ cmd_destroy() {
   fi
 }
 
+# --- Proxy commands ----------------------------------------------------------
+
+cmd_proxy_add() {
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: ./dilxc.sh proxy add <container-port> [host-port]"
+    exit 1
+  fi
+  local container_port="$1"
+  local host_port="${2:-$1}"
+  validate_port "$container_port" "container port"
+  validate_port "$host_port" "host port"
+  local device_name="proxy-tcp-${host_port}"
+  if lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^${device_name}:"; then
+    echo "Error: host port ${host_port} is already proxied (device: ${device_name})"
+    exit 1
+  fi
+  if ! lxc config device add "$CONTAINER_NAME" "$device_name" proxy \
+    listen="tcp:0.0.0.0:${host_port}" \
+    connect="tcp:127.0.0.1:${container_port}"; then
+    echo "Error: failed to add proxy device — is the port already in use?"
+    exit 1
+  fi
+  echo "Proxy added: 0.0.0.0:${host_port} → container:${container_port} (${device_name})"
+}
+
+cmd_proxy_list() {
+  local output
+  output=$(lxc config device show "$CONTAINER_NAME" 2>/dev/null || true)
+  local table
+  table=$(echo "$output" | awk '
+    function flush() {
+      if (listen != "" && connect != "") {
+        rows[++n] = listen "|" connect
+      }
+      listen = ""; connect = ""
+    }
+    /^proxy-tcp-.*:/ { flush(); in_proxy=1; next }
+    /^[^ ]/ { flush(); in_proxy=0; next }
+    in_proxy && /listen:/ { listen=$2; sub(/^tcp:/, "", listen) }
+    in_proxy && /connect:/ { connect=$2; sub(/^tcp:/, "", connect) }
+  END {
+    flush()
+    if (n > 0) {
+      printf "%-18s  %s\n", "HOST", "CONTAINER"
+      for (i = 1; i <= n; i++) {
+        split(rows[i], parts, "|")
+        printf "%-14s  →  %s\n", parts[1], parts[2]
+      }
+    }
+  }')
+  if [[ -z "$table" ]]; then
+    echo "No proxy devices configured"
+  else
+    echo "$table"
+  fi
+}
+
+cmd_proxy_rm() {
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: ./dilxc.sh proxy rm <host-port>"
+    echo "       ./dilxc.sh proxy rm all"
+    exit 1
+  fi
+  if [[ "$1" == "all" ]]; then
+    local devices
+    devices=$(lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -oP '^proxy-tcp-[^:]+' || true)
+    if [[ -z "$devices" ]]; then
+      echo "No proxy devices to remove"
+      return 0
+    fi
+    local count=0
+    local dev
+    while IFS= read -r dev; do
+      lxc config device remove "$CONTAINER_NAME" "$dev" && ((count++))
+    done <<< "$devices"
+    echo "Removed ${count} proxy device(s)"
+  else
+    validate_port "$1" "host port"
+    local device_name="proxy-tcp-${1}"
+    if ! lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^${device_name}:"; then
+      echo "Error: no proxy found for host port ${1}"
+      exit 1
+    fi
+    if ! lxc config device remove "$CONTAINER_NAME" "$device_name"; then
+      echo "Error: failed to remove proxy device"
+      exit 1
+    fi
+    echo "Proxy removed: ${device_name}"
+  fi
+}
+
+proxy_usage() {
+  cat << 'EOF'
+Usage: ./dilxc.sh proxy <action> [options]
+
+Actions:
+  add <container-port> [host-port]   Forward a host port to a container port
+  list                               List active port proxies
+  rm <host-port>                     Remove a proxy by host port
+  rm all                             Remove all proxies
+
+Examples:
+  ./dilxc.sh proxy add 3000          # host:3000 → container:3000
+  ./dilxc.sh proxy add 8080 9090     # host:9090 → container:8080
+  ./dilxc.sh proxy list
+  ./dilxc.sh proxy rm 3000
+  ./dilxc.sh proxy rm all
+EOF
+}
+
+cmd_proxy() {
+  local action="${1:-help}"
+  shift 2>/dev/null || true
+  case "$action" in
+    add)           require_running; cmd_proxy_add "$@" ;;
+    list|ls)       require_container; cmd_proxy_list ;;
+    rm|remove)     require_running; cmd_proxy_rm "$@" ;;
+    help|--help|*) proxy_usage ;;
+  esac
+}
+
 # --- Main dispatch -----------------------------------------------------------
 case "${1:-help}" in
   shell)         cmd_shell ;;
@@ -370,6 +501,7 @@ case "${1:-help}" in
   snapshots)     cmd_snapshots ;;
   logs)          cmd_logs ;;
   docker)        shift; cmd_docker "$@" ;;
+  proxy)         shift; cmd_proxy "$@" ;;
   health|health-check) cmd_health ;;
   destroy)       cmd_destroy ;;
   help|*)        usage ;;

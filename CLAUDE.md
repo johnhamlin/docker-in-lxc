@@ -114,6 +114,7 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 ## Active Technologies
 - Bash (GNU Bash, no minimum version requirement beyond Ubuntu 24.04 default) + LXD (`lxc` CLI), rsync, btrfs (via LXD storage pool) (001-baseline-spec)
 - btrfs snapshots via `lxc snapshot` / `lxc restore` (001-baseline-spec)
+- LXD proxy devices via `lxc config device add/show/remove` for TCP port forwarding (002-port-proxy)
 
 ## Recent Changes
 - 001-baseline-spec: Added Bash (GNU Bash, no minimum version requirement beyond Ubuntu 24.04 default) + LXD (`lxc` CLI), rsync, btrfs (via LXD storage pool)
