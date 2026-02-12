@@ -30,38 +30,49 @@ The container comes fully provisioned with:
 
 If Docker also runs on your host, you'll need firewall rules to prevent Docker's iptables from blocking LXD bridge traffic. See [Host Firewall Setup](#host-firewall-setup).
 
+## Install
+
+```bash
+git clone https://github.com/johnhamlin/docker-in-lxc.git ~/.local/share/docker-in-lxc
+ln -s ~/.local/share/docker-in-lxc/dilxc.sh ~/.local/bin/dilxc
+```
+
 ## Quick Start
 
 ```bash
-# 1. Clone and make scripts executable
-git clone https://github.com/your-user/docker-in-lxc.git
-cd docker-in-lxc
-chmod +x setup-host.sh provision-container.sh dilxc.sh
+# 1. Create the sandbox (takes ~5 minutes)
+dilxc init -p /path/to/your/project
 
-# 2. Create the sandbox (takes ~5 minutes)
-./setup-host.sh -n docker-lxc -p /path/to/your/project
-
-# 3. Authenticate Claude Code (one-time)
-./dilxc.sh login
+# 2. Authenticate Claude Code (one-time)
+dilxc login
 # Complete the browser OAuth flow, then type /exit
 
-# 4. Start working
-./dilxc.sh sync                              # copy project into sandbox
-./dilxc.sh claude                            # interactive autonomous session
-./dilxc.sh claude-run "fix the failing tests" # or fire-and-forget
+# 3. Start working
+dilxc sync                              # copy project into sandbox
+dilxc claude                            # interactive autonomous session
+dilxc claude-run "fix the failing tests" # or fire-and-forget
 ```
 
 **Using an API key instead?** Export it before setup:
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
-./setup-host.sh -n docker-lxc -p /path/to/your/project
+dilxc init -p /path/to/your/project
+```
+
+## Update
+
+```bash
+dilxc update
 ```
 
 ## Day-to-Day Usage
 
-### dilxc.sh Commands
+### Commands
 
 ```
+init [options]         Create a new sandbox (runs setup-host.sh)
+update                 Update Docker-in-LXC to the latest version
+
 shell                  Open a shell in the container
 root                   Open a root shell
 start / stop / restart Container lifecycle
@@ -88,18 +99,18 @@ destroy                Delete the container (with confirmation)
 ### Typical Session
 
 ```bash
-./dilxc.sh start                     # if stopped
-./dilxc.sh snapshot before-session   # safety net
-./dilxc.sh sync                      # pull in latest source
-./dilxc.sh claude                    # let Claude loose
+dilxc start                     # if stopped
+dilxc snapshot before-session   # safety net
+dilxc sync                      # pull in latest source
+dilxc claude                    # let Claude loose
 ```
 
 ### One-Shot Prompts
 
 ```bash
-./dilxc.sh claude-run "refactor the auth module to use JWT"
-./dilxc.sh claude-run "write integration tests for the API endpoints"
-./dilxc.sh claude-run "find and fix the memory leak in the worker process"
+dilxc claude-run "refactor the auth module to use JWT"
+dilxc claude-run "write integration tests for the API endpoints"
+dilxc claude-run "find and fix the memory leak in the worker process"
 ```
 
 ### Resuming Sessions
@@ -107,7 +118,7 @@ destroy                Delete the container (with confirmation)
 If a session gets interrupted or you want to continue where Claude left off:
 
 ```bash
-./dilxc.sh claude-resume
+dilxc claude-resume
 ```
 
 ### Snapshots
@@ -115,24 +126,24 @@ If a session gets interrupted or you want to continue where Claude left off:
 Take a snapshot before every session. They're instant and free (btrfs copy-on-write).
 
 ```bash
-./dilxc.sh snapshot before-refactor   # save state
-./dilxc.sh snapshots                  # list all
+dilxc snapshot before-refactor   # save state
+dilxc snapshots                  # list all
 
 # If Claude goes off the rails:
-./dilxc.sh restore before-refactor    # instant rollback
+dilxc restore before-refactor    # instant rollback
 
 # Factory reset:
-./dilxc.sh restore clean-baseline
+dilxc restore clean-baseline
 ```
 
 ### Getting Files Out
 
 ```bash
 # Pull to host
-./dilxc.sh pull /home/ubuntu/project/dist/ ./output/
+dilxc pull /home/ubuntu/project/dist/ ./output/
 
 # Git push from inside
-./dilxc.sh shell
+dilxc shell
 cd ~/project && git push origin feature-branch
 
 # Deploy mount (if set up with -d flag)
@@ -150,18 +161,18 @@ docker compose up -d
 docker compose exec postgres psql -U myuser -d mydb
 
 # From the host
-./dilxc.sh docker compose ps
-./dilxc.sh docker compose logs -f
+dilxc docker compose ps
+dilxc docker compose logs -f
 ```
 
 ### Multiple Sandboxes
 
 ```bash
-./setup-host.sh -n project-alpha -p ~/projects/alpha
-./setup-host.sh -n project-beta -p ~/projects/beta
+dilxc init -n project-alpha -p ~/projects/alpha
+dilxc init -n project-beta -p ~/projects/beta
 
-DILXC_CONTAINER=project-alpha ./dilxc.sh claude
-DILXC_CONTAINER=project-beta ./dilxc.sh claude-run "add pagination"
+DILXC_CONTAINER=project-alpha dilxc claude
+DILXC_CONTAINER=project-beta dilxc claude-run "add pagination"
 ```
 
 ## Spec Kit Integration
@@ -169,14 +180,14 @@ DILXC_CONTAINER=project-beta ./dilxc.sh claude-run "add pagination"
 The container comes with [Spec Kit](https://github.com/github/spec-kit) pre-installed for spec-driven development. If your project has a `.specify/` directory, sync it into the sandbox and use it in prompts:
 
 ```bash
-./dilxc.sh sync
-./dilxc.sh claude-run "implement the feature described in specs/auth-redesign.md"
+dilxc sync
+dilxc claude-run "implement the feature described in specs/auth-redesign.md"
 ```
 
 Or use `specify` directly inside the container:
 
 ```bash
-./dilxc.sh shell
+dilxc shell
 cd ~/project
 specify run
 ```
@@ -206,7 +217,7 @@ docker-in-lxc/
 | `/home/ubuntu/project` | Read-write | Working copy where Claude edits |
 | `/mnt/deploy` | Read-write | Optional output directory mapped to host |
 
-Claude can't accidentally corrupt your host source. Sync changes in with `./dilxc.sh sync` and extract results with `git push`, `./dilxc.sh pull`, or the deploy mount.
+Claude can't accidentally corrupt your host source. Sync changes in with `dilxc sync` and extract results with `git push`, `dilxc pull`, or the deploy mount.
 
 ## Host Firewall Setup
 
@@ -277,11 +288,11 @@ lxc exec docker-lxc -- systemctl status docker
 
 ### Claude Code can't authenticate
 
-**Pro/Max subscribers** — run `./dilxc.sh login` and complete the browser OAuth flow.
+**Pro/Max subscribers** — run `dilxc login` and complete the browser OAuth flow.
 
 **API key users** — verify the key is set:
 ```bash
-./dilxc.sh shell
+dilxc shell
 echo $ANTHROPIC_API_KEY
 ```
 
@@ -290,7 +301,7 @@ echo $ANTHROPIC_API_KEY
 Don't try to resume. Delete and recreate:
 ```bash
 lxc delete docker-lxc --force
-./setup-host.sh -n docker-lxc -p /path/to/your/project
+dilxc init -n docker-lxc -p /path/to/your/project
 ```
 
 ### Re-provisioning an existing container

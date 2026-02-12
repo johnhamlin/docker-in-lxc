@@ -1,0 +1,6 @@
+specs/ export-ignore
+.specify/ export-ignore
+.claude/ export-ignore
+constitution-input.md export-ignore
+spec-input.md export-ignore
+HANDOFF.md export-ignore
