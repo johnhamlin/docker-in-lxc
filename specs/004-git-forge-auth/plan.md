@@ -84,7 +84,7 @@ dilxc.sh                   # Add ensure_auth_forwarding helper, git-auth subcomm
 ### Phase B: Container Setup (setup-host.sh)
 
 1. **Add SSH agent proxy device** after existing device creation (project mount). Uses `$SSH_AUTH_SOCK` if set, falls back to `/dev/null` placeholder.
-2. **Add gh config disk device** if `~/.config/gh` exists on host. Mounted read-only.
+2. **Add gh config disk device** if `~/.config/gh` exists on host. Mounted read-only with `shift=true` for kernel idmapped UID remapping (host UID → container UID).
 
 Note: Since `setup-host.sh` creates a fresh container, devices won't pre-exist and simple `lxc config device add` is sufficient (no remove-then-add needed).
 

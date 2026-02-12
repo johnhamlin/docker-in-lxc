@@ -101,7 +101,8 @@ IF gh-config device does NOT exist on container:
     lxc config device add $CONTAINER_NAME gh-config disk \
       source=$HOME/.config/gh \
       path=/home/ubuntu/.config/gh \
-      readonly=true
+      readonly=true \
+      shift=true
 ```
 
 ### Error Handling
@@ -136,7 +137,8 @@ if [[ -d "$HOME/.config/gh" ]]; then
   lxc config device add "$CONTAINER_NAME" gh-config disk \
     source="$HOME/.config/gh" \
     path=/home/ubuntu/.config/gh \
-    readonly=true
+    readonly=true \
+    shift=true
 fi
 ```
 
@@ -161,7 +163,8 @@ if ! lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^gh-config:
     lxc config device add "$CONTAINER_NAME" gh-config disk \
       source="$HOME/.config/gh" \
       path=/home/ubuntu/.config/gh \
-      readonly=true
+      readonly=true \
+      shift=true
     echo "  Added GitHub CLI config mount"
   fi
 fi

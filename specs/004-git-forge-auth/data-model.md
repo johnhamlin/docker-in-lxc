@@ -43,6 +43,7 @@ An LXD disk device that bind-mounts the host's `~/.config/gh` directory into the
 | `source` | `$HOME/.config/gh` | Host-side path (resolved at creation time) |
 | `path` | `/home/ubuntu/.config/gh` | Container-side mount point |
 | `readonly` | `true` | Prevents writes to host config |
+| `shift` | `true` | Kernel idmapped mount: remaps host UID → container UID |
 
 **Lifecycle**:
 - Created by `setup-host.sh` if `~/.config/gh` exists at setup time
