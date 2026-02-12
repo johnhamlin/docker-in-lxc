@@ -133,7 +133,8 @@ ALIASES
 if $INSTALL_FISH; then
   apt-get install -y fish
 
-  su - ubuntu -c 'mkdir -p /home/ubuntu/.config/fish'
+  mkdir -p /home/ubuntu/.config/fish
+  chown ubuntu:ubuntu /home/ubuntu/.config /home/ubuntu/.config/fish
   cat > /home/ubuntu/.config/fish/config.fish << 'FISHCONFIG'
 # User-installed tools
 fish_add_path ~/.local/bin
