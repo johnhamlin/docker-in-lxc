@@ -120,7 +120,8 @@ lxc config device remove "$CONTAINER_NAME" project 2>/dev/null || true
 lxc config device add "$CONTAINER_NAME" project disk \
   source="$PROJECT_PATH" \
   path=/home/ubuntu/project-src \
-  readonly=true
+  readonly=true \
+  shift=true
 echo "  Mounted $PROJECT_PATH -> /home/ubuntu/project-src (read-only)"
 
 # --- Step 4: Mount deploy directory (read-write, optional) -------------------
@@ -129,7 +130,8 @@ if [[ -n "$DEPLOY_PATH" ]]; then
   lxc config device remove "$CONTAINER_NAME" deploy 2>/dev/null || true
   lxc config device add "$CONTAINER_NAME" deploy disk \
     source="$DEPLOY_PATH" \
-    path=/mnt/deploy
+    path=/mnt/deploy \
+    shift=true
   echo "  Mounted $DEPLOY_PATH -> /mnt/deploy (read-write)"
   echo "  Warning: Claude Code CAN write to this path on the host!"
 else
