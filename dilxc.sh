@@ -424,7 +424,11 @@ cmd_proxy_add() {
 
 cmd_proxy_list() {
   local output
-  output=$(lxc config device show "$CONTAINER_NAME" 2>/dev/null || true)
+  if ! output=$(lxc config device show "$CONTAINER_NAME" 2>&1); then
+    echo "Error: failed to list devices for container '$CONTAINER_NAME'" >&2
+    echo "$output" >&2
+    return 1
+  fi
   local table
   table=$(echo "$output" | awk '
     function flush() {
@@ -443,7 +447,7 @@ cmd_proxy_list() {
       printf "%-18s  %s\n", "HOST", "CONTAINER"
       for (i = 1; i <= n; i++) {
         split(rows[i], parts, "|")
-        printf "%-14s  →  %s\n", parts[1], parts[2]
+        printf "%-18s  →  %s\n", parts[1], parts[2]
       }
     }
   }')

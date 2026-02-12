@@ -167,14 +167,14 @@ Examples:
 A shared helper validates port numbers for both `add` and `rm`:
 
 ```
-validate_port(value) → integer or exit 1
+validate_port(value, label) → void or exit 1
 ```
 
 - Checks value is a non-empty string
 - Checks value is a positive integer (digits only)
 - Checks value is in range 1-65535
-- Returns the validated integer
-- On failure: prints error message and exits 1
+- On success: returns silently
+- On failure: prints `Error: invalid <label> '<value>' — must be a number between 1 and 65535` and exits 1
 
 ## Integration with Existing Commands
 
