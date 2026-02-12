@@ -1,6 +1,6 @@
 # Docker-in-LXC
 
-Run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) autonomously inside an LXD system container with full Docker support, btrfs snapshot rollback, and [Spec Kit](https://github.com/github/spec-kit) for spec-driven development.
+Run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) autonomously inside an LXD system container with full Docker support and btrfs snapshot rollback.
 
 ## Why LXD?
 
@@ -16,10 +16,10 @@ Claude Code's built-in sandbox can't run Docker. Running Claude Code inside a Do
 The container comes fully provisioned with:
 
 - Ubuntu 24.04 with Docker CE running natively
-- Node.js 22, Claude Code, and dev tools (git, ripgrep, jq, tmux, fish, etc.)
-- [uv](https://github.com/astral-sh/uv) and [Spec Kit](https://github.com/github/spec-kit) (`specify-cli`) for spec-driven workflows
-- Fish shell with aliases (`cc`, `cc-resume`, `cc-prompt`) and helpers (`sync-project`, `deploy`)
+- Node.js 22, Claude Code, GitHub CLI, and dev tools (git, ripgrep, jq, tmux, etc.)
+- Aliases (`cc`, `cc-resume`, `cc-prompt`) and helpers (`sync-project`, `deploy`) in bash (fish opt-in via `--fish`)
 - A clean baseline snapshot for factory resets
+- [Custom provisioning](RECIPES.md) for adding your own tools (uv, Spec Kit, databases, etc.)
 
 ## Prerequisites
 
@@ -176,22 +176,15 @@ DILXC_CONTAINER=project-alpha dilxc claude
 DILXC_CONTAINER=project-beta dilxc claude-run "add pagination"
 ```
 
-## Spec Kit Integration
+## Customizing Your Container
 
-The container comes with [Spec Kit](https://github.com/github/spec-kit) pre-installed for spec-driven development. If your project has a `.specify/` directory, sync it into the sandbox and use it in prompts:
-
-```bash
-dilxc sync
-dilxc claude-run "implement the feature described in specs/auth-redesign.md"
-```
-
-Or use `specify` directly inside the container:
+The default install keeps things lean — Docker, Node.js, Claude Code, git, and common dev tools. For anything else, create a `custom-provision.sh` that runs automatically on every new container:
 
 ```bash
-dilxc shell
-cd ~/project
-specify run
+dilxc customize    # creates the file and opens your editor
 ```
+
+See [RECIPES.md](RECIPES.md) for copy-paste snippets (uv, Spec Kit, PostgreSQL client, etc.).
 
 ## How It Works
 
@@ -206,7 +199,7 @@ docker-in-lxc/
 
 **setup-host.sh** creates the LXD container with `security.nesting=true` (required for Docker), mounts your project read-only, pushes the provisioning script inside, runs it, and takes a baseline snapshot.
 
-**provision-container.sh** installs Docker CE, Node.js 22, Claude Code, uv, Spec Kit, and dev tools. It configures fish shell with aliases and helpers in both bash and fish configs.
+**provision-container.sh** installs Docker CE, Node.js 22, Claude Code, GitHub CLI, and dev tools. It configures aliases and helpers in bash (and fish if `--fish` is passed).
 
 **dilxc.sh** is your daily driver. It wraps `lxc` commands into a simple interface with proper TTY handling for interactive sessions and safe shell escaping for arguments.
 

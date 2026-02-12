@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Bash scripts for running Claude Code autonomously inside an LXD system container on an Ubuntu homelab server. The LXD container IS the sandbox — Claude Code runs with `--dangerously-skip-permissions` inside it, and btrfs snapshots provide rollback safety. Docker runs natively inside the container (via `security.nesting=true`), avoiding Docker-in-Docker complications. The container comes pre-installed with uv and Spec Kit (`specify-cli`) for spec-driven development workflows.
+Bash scripts for running Claude Code autonomously inside an LXD system container on an Ubuntu homelab server. The LXD container IS the sandbox — Claude Code runs with `--dangerously-skip-permissions` inside it, and btrfs snapshots provide rollback safety. Docker runs natively inside the container (via `security.nesting=true`), avoiding Docker-in-Docker complications.
 
 ## Host Environment
 
@@ -19,7 +19,7 @@ Three scripts, each with a distinct execution context:
 
 1. **`setup-host.sh`** — Runs on the host. One-time setup: creates an Ubuntu 24.04 LXD container, mounts project directory read-only, pushes and executes the provisioning script, takes a baseline snapshot. Uses `set -euo pipefail`; if it fails partway through, delete the container and start fresh rather than resuming. Presents browser OAuth login as the primary auth method; API key injection via `ANTHROPIC_API_KEY` env var is the alternative.
 
-2. **`provision-container.sh`** — Runs inside the container (pushed by setup-host.sh). Installs Docker CE, Node.js 22 (NodeSource), Claude Code (npm global), uv, Spec Kit (`specify-cli`), and dev tools. Configures the `ubuntu` user with aliases (`cc`, `cc-resume`, `cc-prompt`), helper functions (`sync-project`, `deploy`), and `~/.local/bin` on PATH in bash. Fish shell is opt-in via `--fish` flag (installs fish, writes fish config, sets fish as default shell).
+2. **`provision-container.sh`** — Runs inside the container (pushed by setup-host.sh). Installs Docker CE, Node.js 22 (NodeSource), Claude Code (npm global), and dev tools. Configures the `ubuntu` user with aliases (`cc`, `cc-resume`, `cc-prompt`), helper functions (`sync-project`, `deploy`), and `~/.local/bin` on PATH in bash. Fish shell is opt-in via `--fish` flag (installs fish, writes fish config, sets fish as default shell).
 
 3. **`dilxc.sh`** — Runs on the host. Day-to-day management wrapper around `lxc` commands. Container name comes from `DILXC_CONTAINER` env var (default: `docker-lxc`).
 
@@ -41,7 +41,7 @@ Users can create an optional `custom-provision.sh` in the repo root to install a
 
 ### Writing a custom provision script
 
-The script runs as **root** inside an **Ubuntu 24.04** container with network access. The following are already installed by standard provisioning: Docker CE, Node.js 22, npm, git, Claude Code, uv, Spec Kit (`specify-cli`), gh CLI, and common dev tools (jq, ripgrep, fd-find, htop, tmux, postgresql-client).
+The script runs as **root** inside an **Ubuntu 24.04** container with network access. The following are already installed by standard provisioning: Docker CE, Node.js 22, npm, git, Claude Code, gh CLI, and common dev tools (jq, ripgrep, fd-find, htop, tmux).
 
 **Required conventions:**
 - Start with `#!/bin/bash` and `set -euo pipefail` (so failing commands halt the script and propagate the error to the parent provisioning process)
@@ -49,7 +49,7 @@ The script runs as **root** inside an **Ubuntu 24.04** container with network ac
 - Must be **non-interactive** — no stdin prompts (`DEBIAN_FRONTEND=noninteractive`, `-y` flags)
 - Use section structure: `echo "--- Installing X ---"` headers, `echo "  X installed ✓"` results
 
-**Available package managers:** `apt-get`, `npm`, `pip`/`uv`
+**Available package managers:** `apt-get`, `npm`, `pip`
 
 ### Creating the file
 
@@ -151,8 +151,10 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 - Bash (GNU Bash, Ubuntu 24.04 default) + LXD (`lxc` CLI), GitHub CLI (`gh`), OpenSSH (`ssh-agent`, `ssh-add`) (004-git-forge-auth)
 - N/A (LXD device metadata in Dqlite database) (004-git-forge-auth)
 - N/A (single optional file in repo root, `/tmp/` inside container) (005-custom-provision-scripts)
+- N/A (shell scripts and markdown files) (006-slim-default-provision)
 
 ## Recent Changes
+- 006-slim-default-provision: Removed uv, Spec Kit, postgresql-client from default provisioning; added RECIPES.md with custom provisioning recipes
 - 005-custom-provision-scripts: Added optional `custom-provision.sh` mechanism, `customize` CLI subcommand, agent instructions for generating custom provision scripts
 - 004-git-forge-auth: Added SSH agent forwarding, GitHub CLI config sharing, `git-auth` diagnostic subcommand, `ensure_auth_forwarding` pre-command hook
 - 001-baseline-spec: Added Bash (GNU Bash, no minimum version requirement beyond Ubuntu 24.04 default) + LXD (`lxc` CLI), rsync, btrfs (via LXD storage pool)

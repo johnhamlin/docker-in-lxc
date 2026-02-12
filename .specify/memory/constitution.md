@@ -40,7 +40,7 @@
 
 The entire project is three bash scripts. No frameworks, no compiled
 languages, no package managers for the project itself. Dependencies exist
-only inside the container (Node.js, Docker, uv, etc.) — the host-side
+only inside the container (Node.js, Docker, etc.) — the host-side
 tooling is plain bash.
 
 ### II. Three Scripts, Three Execution Contexts

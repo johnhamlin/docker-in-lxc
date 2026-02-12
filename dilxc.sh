@@ -67,7 +67,7 @@ Commands:
   health-check           Verify container, network, Docker, and Claude Code
   git-auth               Check SSH agent and GitHub CLI auth status
   customize              Create/edit custom provisioning script
-  destroy                Delete the container entirely (asks for confirmation)
+  destroy [name]           Delete a container entirely (asks for confirmation)
 
 Container Selection (first match wins):
   @<name> prefix         dilxc @myproject shell
@@ -469,11 +469,16 @@ cmd_git_auth() {
 }
 
 cmd_destroy() {
-  require_container
-  echo "Warning: This will permanently delete container '$CONTAINER_NAME' and all snapshots."
+  local target="${1:-$CONTAINER_NAME}"
+  # Verify the target container exists
+  if ! lxc info "$target" &>/dev/null; then
+    echo "Error: Container '$target' not found."
+    exit 1
+  fi
+  echo "Warning: This will permanently delete container '$target' and all snapshots."
   read -rp "Type the container name to confirm: " confirm
-  if [[ "$confirm" == "$CONTAINER_NAME" ]]; then
-    lxc delete "$CONTAINER_NAME" --force
+  if [[ "$confirm" == "$target" ]]; then
+    lxc delete "$target" --force
     echo "Container destroyed"
   else
     echo "Aborted."
@@ -668,7 +673,7 @@ set -euo pipefail
 #   - Runs as root inside an Ubuntu 24.04 container
 #   - Uses set -euo pipefail (any failing command halts the script)
 #   - Network access is available
-#   - Docker, Node.js 22, npm, git, Claude Code, uv, Spec Kit, gh CLI are already installed
+#   - Docker, Node.js 22, npm, git, Claude Code, gh CLI are already installed
 #   - MUST be idempotent (safe to run multiple times)
 #   - MUST use non-interactive flags (e.g., apt-get install -y)
 #
@@ -715,6 +720,6 @@ case "${1:-help}" in
   health|health-check) cmd_health ;;
   git-auth)      cmd_git_auth ;;
   customize)     cmd_customize ;;
-  destroy)       cmd_destroy ;;
+  destroy)       shift; cmd_destroy "$@" ;;
   help|*)        usage ;;
 esac
