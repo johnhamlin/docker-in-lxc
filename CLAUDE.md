@@ -111,6 +111,7 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 - `dilxc.sh` uses `-t` flag on `lxc exec` for interactive commands (`shell`, `root`, `login`, `claude`, `claude-resume`) to allocate a proper TTY.
 - `dilxc.sh` uses `printf %q` for safe shell escaping in `cmd_claude_run` and `cmd_docker` to handle arguments with spaces and special characters.
 - `provision-container.sh` uses `gpg --dearmor --yes` so the Docker GPG key step is idempotent on re-provisioning.
+- The `gh-config` disk device MUST use `shift=true` for kernel idmapped mounts. Without it, host UID 1000 maps to `nobody` (65534) inside the unprivileged container, making `0600` gh config files unreadable. All three locations that create this device (`setup-host.sh`, `ensure_auth_forwarding` in `dilxc.sh`, `cmd_update` in `dilxc.sh`) must include `shift=true`.
 
 ## Active Technologies
 - Bash (GNU Bash, no minimum version requirement beyond Ubuntu 24.04 default) + LXD (`lxc` CLI), rsync, btrfs (via LXD storage pool) (001-baseline-spec)
