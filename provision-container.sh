@@ -189,6 +189,14 @@ fi
 
 echo "  User configured ✓"
 
+# --- Custom provisioning (optional) -----------------------------------------
+if [[ -f /tmp/custom-provision.sh ]]; then
+  echo "--- Running custom provisioning ---"
+  chmod +x /tmp/custom-provision.sh
+  /tmp/custom-provision.sh
+  echo "  Custom provisioning complete ✓"
+fi
+
 # --- Final verification ------------------------------------------------------
 echo ""
 echo "=== Container Provisioning Complete ==="

@@ -177,6 +177,15 @@ echo "[6/8] Provisioning container (this takes a few minutes)..."
 lxc exec "$CONTAINER_NAME" -- rm -f /tmp/provision-container.sh
 lxc file push "$(dirname "$0")/provision-container.sh" \
   "$CONTAINER_NAME/tmp/provision-container.sh"
+
+# Push custom provisioning script if present
+CUSTOM_PROVISION="$(dirname "$0")/custom-provision.sh"
+if [[ -f "$CUSTOM_PROVISION" ]]; then
+  lxc exec "$CONTAINER_NAME" -- rm -f /tmp/custom-provision.sh
+  lxc file push "$CUSTOM_PROVISION" "$CONTAINER_NAME/tmp/custom-provision.sh"
+  echo "  Custom provision script detected — will run after standard provisioning"
+fi
+
 lxc exec "$CONTAINER_NAME" -- chmod +x /tmp/provision-container.sh
 PROVISION_ARGS=()
 $INSTALL_FISH && PROVISION_ARGS+=(--fish)
