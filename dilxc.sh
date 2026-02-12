@@ -65,6 +65,7 @@ Commands:
 
   containers             List available containers and their status
   health-check           Verify container, network, Docker, and Claude Code
+  git-auth               Check SSH agent and GitHub CLI auth status
   destroy                Delete the container entirely (asks for confirmation)
 
 Container Selection (first match wins):
@@ -121,10 +122,29 @@ validate_port() {
   fi
 }
 
+ensure_auth_forwarding() {
+  # Update SSH agent proxy device connect path to current host socket
+  if lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^ssh-agent:"; then
+    if [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
+      lxc config device set "$CONTAINER_NAME" ssh-agent connect="unix:$SSH_AUTH_SOCK" 2>/dev/null || true
+    fi
+  fi
+  # Add gh config mount if host config exists but device is missing
+  if ! lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^gh-config:"; then
+    if [[ -d "$HOME/.config/gh" ]]; then
+      lxc config device add "$CONTAINER_NAME" gh-config disk \
+        source="$HOME/.config/gh" \
+        path=/home/ubuntu/.config/gh \
+        readonly=true 2>/dev/null || true
+    fi
+  fi
+}
+
 # --- Commands ----------------------------------------------------------------
 
 cmd_shell() {
   require_running
+  ensure_auth_forwarding
   lxc exec "$CONTAINER_NAME" -t -- su - ubuntu
 }
 
@@ -177,6 +197,7 @@ cmd_status() {
 
 cmd_login() {
   require_running
+  ensure_auth_forwarding
   echo "Opening Claude Code for browser authentication..."
   echo "Complete the OAuth flow in your browser, then exit with /exit."
   lxc exec "$CONTAINER_NAME" -t -- su - ubuntu -c "claude"
@@ -184,18 +205,21 @@ cmd_login() {
 
 cmd_claude() {
   require_running
+  ensure_auth_forwarding
   lxc exec "$CONTAINER_NAME" -t -- su - ubuntu -c \
     "cd /home/ubuntu/project && claude --dangerously-skip-permissions"
 }
 
 cmd_claude_resume() {
   require_running
+  ensure_auth_forwarding
   lxc exec "$CONTAINER_NAME" -t -- su - ubuntu -c \
     "cd /home/ubuntu/project && claude --dangerously-skip-permissions --resume"
 }
 
 cmd_claude_run() {
   require_running
+  ensure_auth_forwarding
   local prompt="$1"
   if [[ -z "$prompt" ]]; then
     echo "Error: provide a prompt string"
@@ -226,6 +250,7 @@ cmd_sync() {
 
 cmd_exec() {
   require_running
+  ensure_auth_forwarding
   if [[ $# -eq 0 ]]; then
     echo "Error: provide a command to run"
     echo "  ./dilxc.sh exec npm test"
@@ -379,6 +404,63 @@ cmd_health() {
   fi
 
   $ok || { echo ""; echo "Some checks failed."; exit 1; }
+}
+
+cmd_git_auth() {
+  require_running
+  ensure_auth_forwarding
+  echo "=== Git & Forge Auth: $CONTAINER_NAME ==="
+  local ok=true
+
+  # SSH agent check
+  if lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^ssh-agent:"; then
+    local ssh_output
+    if ssh_output=$(lxc exec "$CONTAINER_NAME" -- su - ubuntu -c "ssh-add -l" 2>&1); then
+      local count
+      count=$(echo "$ssh_output" | wc -l)
+      echo "  SSH agent:    ok ($count identities available)"
+    else
+      if echo "$ssh_output" | grep -q "Could not open a connection"; then
+        echo "  SSH agent:    NOT AVAILABLE"
+        echo "    → Start your SSH agent: eval \"\$(ssh-agent -s)\" && ssh-add"
+        ok=false
+      else
+        echo "  SSH agent:    NO KEYS"
+        echo "    → Add a key: ssh-add ~/.ssh/id_ed25519"
+        ok=false
+      fi
+    fi
+  else
+    echo "  SSH agent:    NOT CONFIGURED"
+    echo "    → Start your SSH agent: eval \"\$(ssh-agent -s)\" && ssh-add"
+    echo "    → Then run: ./dilxc.sh update"
+    ok=false
+  fi
+
+  # GitHub CLI check
+  if lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^gh-config:"; then
+    local gh_output
+    if gh_output=$(lxc exec "$CONTAINER_NAME" -- su - ubuntu -c "gh auth status" 2>&1); then
+      local username
+      username=$(echo "$gh_output" | grep -oP 'Logged in to github.com account \K\S+' | head -1)
+      if [[ -n "$username" ]]; then
+        echo "  GitHub CLI:   ok (authenticated as $username)"
+      else
+        echo "  GitHub CLI:   ok"
+      fi
+    else
+      echo "  GitHub CLI:   NOT AUTHENTICATED"
+      echo "    → Authenticate on the host: gh auth login"
+      ok=false
+    fi
+  else
+    echo "  GitHub CLI:   NOT CONFIGURED"
+    echo "    → Authenticate on the host: gh auth login"
+    echo "    → Then run: ./dilxc.sh update"
+    ok=false
+  fi
+
+  $ok || { echo ""; exit 1; }
 }
 
 cmd_destroy() {
@@ -543,6 +625,27 @@ cmd_update() {
   fi
   echo "Updating Docker-in-LXC from $(git -C "$SCRIPT_DIR" rev-parse --short HEAD)..."
   git -C "$SCRIPT_DIR" pull
+
+  # Add missing auth devices to existing containers
+  if lxc info "$CONTAINER_NAME" &>/dev/null; then
+    if ! lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^ssh-agent:"; then
+      lxc config device add "$CONTAINER_NAME" ssh-agent proxy \
+        connect="unix:${SSH_AUTH_SOCK:-/dev/null}" \
+        listen=unix:/tmp/ssh-agent.sock \
+        bind=container \
+        uid=1000 gid=1000 mode=0600
+      echo "  Added SSH agent forwarding device"
+    fi
+    if ! lxc config device show "$CONTAINER_NAME" 2>/dev/null | grep -q "^gh-config:"; then
+      if [[ -d "$HOME/.config/gh" ]]; then
+        lxc config device add "$CONTAINER_NAME" gh-config disk \
+          source="$HOME/.config/gh" \
+          path=/home/ubuntu/.config/gh \
+          readonly=true
+        echo "  Added GitHub CLI config mount"
+      fi
+    fi
+  fi
 }
 
 # --- Main dispatch -----------------------------------------------------------
@@ -571,6 +674,7 @@ case "${1:-help}" in
   proxy)         shift; cmd_proxy "$@" ;;
   containers)    cmd_containers ;;
   health|health-check) cmd_health ;;
+  git-auth)      cmd_git_auth ;;
   destroy)       cmd_destroy ;;
   help|*)        usage ;;
 esac
