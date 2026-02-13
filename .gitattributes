@@ -4,3 +4,6 @@ specs/ export-ignore
 constitution-input.md export-ignore
 spec-input.md export-ignore
 HANDOFF.md export-ignore
+test/bats/ export-ignore
+test/test_helper/bats-support/ export-ignore
+test/test_helper/bats-assert/ export-ignore
