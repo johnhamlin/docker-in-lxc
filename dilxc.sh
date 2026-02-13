@@ -4,31 +4,7 @@
 # Common operations for your container
 # =============================================================================
 
-# --- Container name resolution (first match wins) ---------------------------
-# 1. @name prefix:    ./dilxc.sh @project-b shell
-# 2. DILXC_CONTAINER: env var override
-# 3. .dilxc file:     walk up from $PWD looking for .dilxc
-# 4. Default:         docker-lxc
-if [[ "${1:-}" == @* ]]; then
-  CONTAINER_NAME="${1#@}"
-  shift
-elif [[ -n "${DILXC_CONTAINER:-}" ]]; then
-  CONTAINER_NAME="$DILXC_CONTAINER"
-else
-  _dir="$PWD"
-  CONTAINER_NAME=""
-  while [[ "$_dir" != "/" ]]; do
-    if [[ -f "$_dir/.dilxc" ]]; then
-      CONTAINER_NAME=$(head -1 "$_dir/.dilxc")
-      break
-    fi
-    _dir=$(dirname "$_dir")
-  done
-  unset _dir
-  CONTAINER_NAME="${CONTAINER_NAME:-docker-lxc}"
-fi
-
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+# --- Functions are defined below, outside the main guard ---
 
 usage() {
   cat << EOF
@@ -692,34 +668,63 @@ TEMPLATE
   "${EDITOR:-nano}" "$custom_file"
 }
 
-# --- Main dispatch -----------------------------------------------------------
-case "${1:-help}" in
-  init)          shift; cmd_init "$@" ;;
-  update)        cmd_update ;;
-  shell)         cmd_shell ;;
-  root)          cmd_root ;;
-  start)         cmd_start ;;
-  stop)          cmd_stop ;;
-  restart)       cmd_restart ;;
-  status)        cmd_status ;;
-  login)         cmd_login ;;
-  claude)        cmd_claude ;;
-  claude-run)    shift; cmd_claude_run "$@" ;;
-  claude-resume) cmd_claude_resume ;;
-  sync)          cmd_sync ;;
-  exec)          shift; cmd_exec "$@" ;;
-  pull)          shift; cmd_pull "$@" ;;
-  push)          shift; cmd_push "$@" ;;
-  snapshot)      shift; cmd_snapshot "$@" ;;
-  restore)       shift; cmd_restore "$@" ;;
-  snapshots)     cmd_snapshots ;;
-  logs)          cmd_logs ;;
-  docker)        shift; cmd_docker "$@" ;;
-  proxy)         shift; cmd_proxy "$@" ;;
-  containers)    cmd_containers ;;
-  health|health-check) cmd_health ;;
-  git-auth)      cmd_git_auth ;;
-  customize)     cmd_customize ;;
-  destroy)       shift; cmd_destroy "$@" ;;
-  help|*)        usage ;;
-esac
+# --- Main guard (only runs when script is executed, not sourced) -----------
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  # Container name resolution (first match wins):
+  # 1. @name prefix:    ./dilxc.sh @project-b shell
+  # 2. DILXC_CONTAINER: env var override
+  # 3. .dilxc file:     walk up from $PWD looking for .dilxc
+  # 4. Default:         docker-lxc
+  if [[ "${1:-}" == @* ]]; then
+    CONTAINER_NAME="${1#@}"
+    shift
+  elif [[ -n "${DILXC_CONTAINER:-}" ]]; then
+    CONTAINER_NAME="$DILXC_CONTAINER"
+  else
+    _dir="$PWD"
+    CONTAINER_NAME=""
+    while [[ "$_dir" != "/" ]]; do
+      if [[ -f "$_dir/.dilxc" ]]; then
+        CONTAINER_NAME=$(head -1 "$_dir/.dilxc")
+        break
+      fi
+      _dir=$(dirname "$_dir")
+    done
+    unset _dir
+    CONTAINER_NAME="${CONTAINER_NAME:-docker-lxc}"
+  fi
+
+  SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+
+  # Dispatch
+  case "${1:-help}" in
+    init)          shift; cmd_init "$@" ;;
+    update)        cmd_update ;;
+    shell)         cmd_shell ;;
+    root)          cmd_root ;;
+    start)         cmd_start ;;
+    stop)          cmd_stop ;;
+    restart)       cmd_restart ;;
+    status)        cmd_status ;;
+    login)         cmd_login ;;
+    claude)        cmd_claude ;;
+    claude-run)    shift; cmd_claude_run "$@" ;;
+    claude-resume) cmd_claude_resume ;;
+    sync)          cmd_sync ;;
+    exec)          shift; cmd_exec "$@" ;;
+    pull)          shift; cmd_pull "$@" ;;
+    push)          shift; cmd_push "$@" ;;
+    snapshot)      shift; cmd_snapshot "$@" ;;
+    restore)       shift; cmd_restore "$@" ;;
+    snapshots)     cmd_snapshots ;;
+    logs)          cmd_logs ;;
+    docker)        shift; cmd_docker "$@" ;;
+    proxy)         shift; cmd_proxy "$@" ;;
+    containers)    cmd_containers ;;
+    health|health-check) cmd_health ;;
+    git-auth)      cmd_git_auth ;;
+    customize)     cmd_customize ;;
+    destroy)       shift; cmd_destroy "$@" ;;
+    help|*)        usage ;;
+  esac
+fi

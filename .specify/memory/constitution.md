@@ -1,28 +1,14 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: N/A → 1.0.0 (initial ratification)
+  Version change: 1.0.0 → 1.1.0 (add Principle XIII)
 
   Added principles:
-    I.    Shell Scripts Only
-    II.   Three Scripts, Three Execution Contexts
-    III.  Readability Wins Over Cleverness
-    IV.   The Container Is the Sandbox
-    V.    Don't Touch the Host
-    VI.   LXD Today, Incus Eventually
-    VII.  Idempotent Provisioning
-    VIII. Detect and Report, Don't Auto-Fix
-    IX.   Shell Parity: Bash Always, Fish Opt-In
-    X.    Error Handling
-    XI.   Rsync Excludes Stay Synchronized
-    XII.  Keep Arguments Safe
+    XIII. Test-Driven Development
 
-  Added sections:
-    - Architecture & Execution Contexts
-    - Development Workflow
-    - Governance
+  Modified sections: None
 
-  Removed sections: None (initial creation)
+  Removed sections: None
 
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ No updates needed
@@ -132,6 +118,21 @@ before passing them through `lxc exec`. This applies to `claude-run`
 prompts and `docker` passthrough where arguments may contain spaces and
 special characters.
 
+### XIII. Test-Driven Development
+
+All new features MUST include bats-core tests that verify spec-defined
+acceptance scenarios. Tests live in `test/` using the bats-core framework
+distributed as git submodules. Run all tests with `./run-tests.sh`.
+
+- Tests MUST verify behavior against specs, not merely lock in current
+  implementation. Test names describe what the spec requires, not which
+  internal function is called.
+- Tests MUST use the mock helpers in `test/test_helper/common-setup.bash`
+  for consistent PATH-based mocking of external commands.
+- Bug fixes SHOULD include a regression test demonstrating the fix.
+- Tests MUST run without real infrastructure (no LXD, no Docker, no
+  network) — all external commands are mocked.
+
 ## Architecture & Execution Contexts
 
 The project follows a strict three-script architecture with clear
@@ -190,4 +191,4 @@ MUST comply with these principles.
   comply with the applicable principles. The `CLAUDE.md` file contains
   operational guidance derived from this constitution.
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-11 | **Last Amended**: 2026-02-11
+**Version**: 1.1.0 | **Ratified**: 2026-02-11 | **Last Amended**: 2026-02-13

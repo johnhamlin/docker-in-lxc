@@ -142,6 +142,29 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 - `custom-provision.sh` is invoked at the end of `provision-container.sh` and pushed by `setup-host.sh` — both files must stay in sync regarding the `/tmp/custom-provision.sh` path convention.
 - All LXD disk devices (`project`, `deploy`, `gh-config`) MUST use `shift=true` for kernel idmapped mounts. Without it, host UID 1000 maps to `nobody` (65534) inside the unprivileged container. This breaks `0600` files (gh-config) and causes incorrect ownership on all mounted files. The `gh-config` device is created in three locations (`setup-host.sh`, `ensure_auth_forwarding` in `dilxc.sh`, `cmd_update` in `dilxc.sh`) — all must include `shift=true`.
 
+## Testing
+
+The project uses [bats-core](https://github.com/bats-core/bats-core) for shell script testing, distributed as git submodules (no system packages needed).
+
+```bash
+# Run all tests
+./run-tests.sh
+
+# Run a specific test file
+./run-tests.sh test/dilxc.bats
+
+# Run with verbose output
+./run-tests.sh --verbose-run
+```
+
+- **Framework**: bats-core with bats-support and bats-assert (git submodules under `test/`)
+- **Test files**: `test/dilxc.bats`, `test/setup-host.bats`, `test/provision-container.bats`
+- **Shared helpers**: `test/test_helper/common-setup.bash` — mock creation and assertion helpers
+- **Mock strategy**: PATH-based mocking via `$MOCK_BIN` temp directory; all external commands (`lxc`, `docker`, `rsync`, etc.) are mocked
+- `dilxc.sh` tests source the script (main guard makes it safe) and call `cmd_*` functions directly
+- `setup-host.sh` and `provision-container.sh` tests run scripts black-box via `run` with mocked commands
+- All new features must include tests verifying spec-defined acceptance scenarios (Constitution Principle XIII)
+
 ## Active Technologies
 - Bash (GNU Bash, no minimum version requirement beyond Ubuntu 24.04 default) + LXD (`lxc` CLI), rsync, btrfs (via LXD storage pool) (001-baseline-spec)
 - btrfs snapshots via `lxc snapshot` / `lxc restore` (001-baseline-spec)
@@ -152,6 +175,8 @@ lxc file push provision-container.sh docker-lxc/tmp/provision-container.sh
 - N/A (LXD device metadata in Dqlite database) (004-git-forge-auth)
 - N/A (single optional file in repo root, `/tmp/` inside container) (005-custom-provision-scripts)
 - N/A (shell scripts and markdown files) (006-slim-default-provision)
+- Bash (GNU Bash, Ubuntu 24.04 default) + bats-core, bats-support, bats-assert (git submodules — no system packages) (007-shell-test-suite)
+- N/A (shell scripts and test files only) (007-shell-test-suite)
 
 ## Recent Changes
 - 006-slim-default-provision: Removed uv, Spec Kit, postgresql-client from default provisioning; added RECIPES.md with custom provisioning recipes
