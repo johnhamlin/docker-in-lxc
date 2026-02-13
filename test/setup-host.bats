@@ -21,6 +21,13 @@ setup() {
     TEST_DEPLOY_DIR="$BATS_TEST_TMPDIR/deploy"
     mkdir -p "$TEST_DEPLOY_DIR"
 
+    # Copy setup-host.sh to a temp directory so tests that create
+    # custom-provision.sh (resolved via dirname "$0") don't pollute
+    # the working tree
+    SETUP_SCRIPT_DIR="$BATS_TEST_TMPDIR/script-dir"
+    mkdir -p "$SETUP_SCRIPT_DIR"
+    cp "$PROJECT_ROOT/setup-host.sh" "$SETUP_SCRIPT_DIR/setup-host.sh"
+
     # Create comprehensive lxc mock that handles all subcommands
     cat > "$MOCK_BIN/lxc" << 'MOCK'
 #!/usr/bin/env bash
@@ -55,14 +62,9 @@ MOCK
     export SSH_AUTH_SOCK="/tmp/test-ssh-agent.sock"
 }
 
-teardown() {
-    # Clean up custom-provision.sh if any test created it
-    rm -f "$PROJECT_ROOT/custom-provision.sh"
-}
-
 # Helper: run setup-host.sh with the lxc mock and isolated HOME
 _run_setup() {
-    HOME="$TEST_HOME" run "$PROJECT_ROOT/setup-host.sh" "$@"
+    HOME="$TEST_HOME" run "$SETUP_SCRIPT_DIR/setup-host.sh" "$@"
 }
 
 # =============================================================================
@@ -302,8 +304,8 @@ MOCK
 }
 
 @test "T016: custom-provision.sh is pushed when present" {
-    # Create a custom-provision.sh in the repo root
-    cat > "$PROJECT_ROOT/custom-provision.sh" << 'EOF'
+    # Create a custom-provision.sh next to the setup script copy
+    cat > "$SETUP_SCRIPT_DIR/custom-provision.sh" << 'EOF'
 #!/bin/bash
 set -euo pipefail
 echo "custom provisioning"
@@ -318,8 +320,8 @@ EOF
 }
 
 @test "T016: custom-provision.sh is skipped when absent" {
-    # Ensure no custom-provision.sh exists
-    rm -f "$PROJECT_ROOT/custom-provision.sh"
+    # Ensure no custom-provision.sh exists next to the setup script
+    rm -f "$SETUP_SCRIPT_DIR/custom-provision.sh"
     _run_setup -p "$TEST_PROJECT_DIR"
     assert_success
     refute_output --partial "Custom provision script detected"

@@ -25,14 +25,16 @@ MOCK
 
 # create_mock_with_output <cmd> <output> [exit_code]
 # Creates a mock that prints output, records calls, and returns the given exit code.
+# Output is stored in a sidecar file to avoid shell quoting issues.
 create_mock_with_output() {
     local cmd="$1"
     local output="$2"
     local exit_code="${3:-0}"
+    printf '%s\n' "$output" > "$MOCK_BIN/${cmd}.output"
     cat > "$MOCK_BIN/$cmd" << MOCK
 #!/usr/bin/env bash
 echo "\$@" >> "\$BATS_TEST_TMPDIR/${cmd}.calls"
-printf '%s\n' $(printf '%q' "$output")
+cat "$MOCK_BIN/${cmd}.output"
 exit $exit_code
 MOCK
     chmod +x "$MOCK_BIN/$cmd"
